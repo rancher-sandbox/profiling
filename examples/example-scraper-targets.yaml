@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pprof-example-deployment
+  labels:
+    app: pprof
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pprof
+  template:
+    metadata:
+      labels:
+        app: pprof
+    spec:
+      containers:
+      - name: pprof-example
+        image: alex7285/pprof-tracer-example:v0.1
+        ports:
+        - containerPort: 6060
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pprof-example-service
+  labels:
+    app: pprof
+spec:
+  selector:
+    app: pprof
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 6060
+  type: ClusterIP

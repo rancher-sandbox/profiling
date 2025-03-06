@@ -1,0 +1,13 @@
+apiVersion: resources.cattle.io/v1alpha1
+kind : PprofMonitor
+metadata:
+  name: pprofmonitor-sample
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: pprof
+  namespaceSelector:
+    any : true
+  endpoint:
+    targetPort : 80

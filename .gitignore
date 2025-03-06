@@ -26,3 +26,4 @@ go.work.sum
 
 kubeconfig.yaml
 bin/
+.vscode

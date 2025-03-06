@@ -1,0 +1,41 @@
+self_telemetry: null
+monitors:
+    - name: Pod/default/pprof-example-deployment-55c897bb65-8n5js
+      endpoint: http://10.42.0.38:6060
+      sampling:
+        allocs: null
+        block: null
+        goroutine: null
+        heap: null
+        mutex: null
+        profile:
+          seconds: 5
+        threadcreate: null
+        trace: null
+        compression: ""
+    - name: Pod/default/pprof-example-deployment-55c897bb65-hdmhw
+      endpoint: http://10.42.0.39:6060
+      sampling:
+        allocs: null
+        block: null
+        goroutine: null
+        heap: null
+        mutex: null
+        profile:
+          seconds: 5
+        threadcreate: null
+        trace: null
+        compression: ""
+    - name: Pod/default/pprof-example-deployment-55c897bb65-skbz4
+      sampling:
+        endpoint: http://10.42.0.37:6060
+        allocs: null
+        block: null
+        goroutine: null
+        heap: null
+        mutex: null
+        profile:
+          seconds: 5
+        threadcreate: null
+        trace: null
+        compression: ""

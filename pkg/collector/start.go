@@ -32,7 +32,7 @@ func (c *Collector) Start(ctx context.Context) error {
 	mons := []*monitor.Monitor{}
 
 	if c.Config.SelfTelemetry != nil {
-		addr := fmt.Sprintf("localhost:%d", c.Config.SelfTelemetry.PprofPort)
+		addr := fmt.Sprintf("127.0.0.1:%d", c.Config.SelfTelemetry.PprofPort)
 		server := &http.Server{
 			Addr:    addr,
 			Handler: nil,
@@ -51,13 +51,15 @@ func (c *Collector) Start(ctx context.Context) error {
 		mon := monitor.NewMonitor(c.logger, &config.MonitorConfig{
 			Name:     "__self",
 			Endpoint: fmt.Sprintf("http://%s", addr),
-			Profile: &config.SamplerConfig{
-				Seconds: 5,
+			GlobalSampling: config.GlobalSamplingConfig{
+				Profile: &config.SamplerConfig{
+					Seconds: 5,
+				},
 			},
 		})
 		mons = append(mons, mon)
 	}
-
+	c.logger.With("len", len(c.Config.Monitors)).Info("starting monitors...")
 	for _, cfg := range c.Config.Monitors {
 		mons = append(mons, monitor.NewMonitor(c.logger, cfg))
 	}

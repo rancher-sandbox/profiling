@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	_ "net/http/pprof"
@@ -16,11 +17,32 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
+var (
+	logger = slog.Default()
+)
+
 func BuildCollectorCmd() *cobra.Command {
 	var configFile string
+	var logLevel string
 	cmd := &cobra.Command{
 		Use: "collector",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			level := slog.LevelInfo
+
+			switch strings.ToLower(logLevel) {
+			case "debug":
+				level = slog.LevelDebug
+			case "info":
+				level = slog.LevelInfo
+			case "warn":
+				level = slog.LevelWarn
+			case "error":
+				level = slog.LevelError
+			default:
+				logger.With("input-log-level", logLevel).Warn("invalid log level, defaulting to info")
+			}
+			setupLogger(level)
+
 			stopper := make(chan os.Signal, 1)
 			signal.Notify(stopper, os.Interrupt, syscall.SIGTERM)
 			reloader := make(chan os.Signal, 1)
@@ -35,7 +57,9 @@ func BuildCollectorCmd() *cobra.Command {
 				return fmt.Errorf("failed to unmarshal config file: %w", err)
 			}
 
-			c := collector.NewCollector(context.Background(), slog.Default(), cfg)
+			logger.With("config", configFile).Info("starting collector")
+
+			c := collector.NewCollector(context.Background(), logger, cfg)
 
 			err = c.Start(context.Background())
 			if err != nil {
@@ -49,7 +73,7 @@ func BuildCollectorCmd() *cobra.Command {
 					}
 					return nil
 				case <-reloader:
-					slog.Default().Info("reloading collector config...")
+					logger.Info("reloading collector config...")
 					data, err := os.ReadFile(configFile)
 					if err != nil {
 						return fmt.Errorf("failed to read config during reload file: %w", err)
@@ -65,12 +89,13 @@ func BuildCollectorCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVarP(&configFile, "config", "c", "", "Path to collector config file")
+	cmd.Flags().StringVarP(&logLevel, "log-level", "l", "info", "Log level")
 	return cmd
 }
 
-func init() {
+func setupLogger(level slog.Level) {
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
+		Level: level,
 	})))
 	slog.SetLogLoggerLevel(slog.LevelDebug)
 }

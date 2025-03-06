@@ -26,7 +26,7 @@ func NewMonitor(logger *slog.Logger, config *config.MonitorConfig) *Monitor {
 	return &Monitor{
 		logger:  logger,
 		config:  config,
-		stopper: make(chan struct{}),
+		stopper: nil,
 		ca:      nil,
 	}
 }
@@ -52,57 +52,58 @@ func (c *Monitor) constructRequest(suffix string, seconds int) (reqWrapper, erro
 
 func (c *Monitor) requestsFromMonitorConfig() ([]reqWrapper, error) {
 	reqs := []reqWrapper{}
-	if c.config.Allocs != nil {
-		req, err := c.constructRequest("alloc", c.config.Allocs.Seconds)
+
+	if c.config.GlobalSampling.Allocs != nil {
+		req, err := c.constructRequest("alloc", c.config.GlobalSampling.Allocs.Seconds)
 		if err != nil {
 			return nil, err
 		}
 		reqs = append(reqs, req)
 	}
-	if c.config.Block != nil {
-		req, err := c.constructRequest("block", c.config.Block.Seconds)
+	if c.config.GlobalSampling.Block != nil {
+		req, err := c.constructRequest("block", c.config.GlobalSampling.Block.Seconds)
 		if err != nil {
 			return nil, err
 		}
 		reqs = append(reqs, req)
 	}
-	if c.config.Goroutine != nil {
-		req, err := c.constructRequest("goroutine", c.config.Goroutine.Seconds)
+	if c.config.GlobalSampling.Goroutine != nil {
+		req, err := c.constructRequest("goroutine", c.config.GlobalSampling.Goroutine.Seconds)
 		if err != nil {
 			return nil, err
 		}
 		reqs = append(reqs, req)
 	}
-	if c.config.Heap != nil {
-		req, err := c.constructRequest("heap", c.config.Heap.Seconds)
+	if c.config.GlobalSampling.Heap != nil {
+		req, err := c.constructRequest("heap", c.config.GlobalSampling.Heap.Seconds)
 		if err != nil {
 			return nil, err
 		}
 		reqs = append(reqs, req)
 	}
-	if c.config.Mutex != nil {
-		req, err := c.constructRequest("goroutine", c.config.Goroutine.Seconds)
+	if c.config.GlobalSampling.Mutex != nil {
+		req, err := c.constructRequest("goroutine", c.config.GlobalSampling.Goroutine.Seconds)
 		if err != nil {
 			return nil, err
 		}
 		reqs = append(reqs, req)
 	}
-	if c.config.Profile != nil {
-		req, err := c.constructRequest("profile", c.config.Profile.Seconds)
+	if c.config.GlobalSampling.Profile != nil {
+		req, err := c.constructRequest("profile", c.config.GlobalSampling.Profile.Seconds)
 		if err != nil {
 			return nil, err
 		}
 		reqs = append(reqs, req)
 	}
-	if c.config.ThreadCrate != nil {
-		req, err := c.constructRequest("threadcrate", c.config.ThreadCrate.Seconds)
+	if c.config.GlobalSampling.ThreadCrate != nil {
+		req, err := c.constructRequest("threadcrate", c.config.GlobalSampling.ThreadCrate.Seconds)
 		if err != nil {
 			return nil, err
 		}
 		reqs = append(reqs, req)
 	}
-	if c.config.Trace != nil {
-		req, err := c.constructRequest("trace", c.config.Trace.Seconds)
+	if c.config.GlobalSampling.Trace != nil {
+		req, err := c.constructRequest("trace", c.config.GlobalSampling.Trace.Seconds)
 		if err != nil {
 			return nil, err
 		}
@@ -113,11 +114,12 @@ func (c *Monitor) requestsFromMonitorConfig() ([]reqWrapper, error) {
 
 // Spawns a goroutine to start monitor collection
 func (c *Monitor) Start(ctx context.Context) error {
-	c.logger.With("name", c.config.Name).Info("starting monitor")
+	c.logger.With("name", c.config.Name).Info("configuring monitor...")
 	reqs, err := c.requestsFromMonitorConfig()
 	if err != nil {
 		return err
 	}
+	c.logger.With("numRequests", len(reqs)).Info("monitors configured, starting...")
 	c.start(ctx, reqs)
 	return nil
 }
@@ -126,6 +128,7 @@ func (c *Monitor) start(ctx context.Context, reqs []reqWrapper) {
 	client := c.newClient()
 	ctxca, ca := context.WithCancel(ctx)
 	c.ca = ca
+	c.stopper = make(chan struct{})
 	for _, req := range reqs {
 		req := req
 		doReq := req.req.WithContext(ctxca)
@@ -158,6 +161,10 @@ func (c *Monitor) start(ctx context.Context, reqs []reqWrapper) {
 func (c *Monitor) Shutdown() error {
 	c.logger.With("name", c.config.Name).Info("shutting down monitor...")
 	c.ca()
-	c.stopper <- struct{}{}
+	close(c.stopper)
+	// select {
+	// case c.stopper <- struct{}{}:
+	// default:
+	// }
 	return nil
 }
