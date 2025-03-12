@@ -20,6 +20,7 @@ type Merger interface {
 type Store interface {
 	Put(startTime, endTime time.Time, profileType string, key string, labels map[string]string, value []byte) error
 	ListKeys() ([]string, error)
+	GroupKeys() (map[string]map[string]map[string][]string, error)
 	Get(profileType, key string) (filepaths []string, err error)
 }
 
@@ -113,6 +114,50 @@ func (s *LabelBasedFileStore) Put(startTime, endTime time.Time, profileType, key
 		return err
 	}
 	return nil
+}
+
+// namespace -> name -> resource -> keys
+func (s *LabelBasedFileStore) GroupKeys() (map[string]map[string]map[string][]string, error) {
+	keys, err := s.ListKeys()
+	if err != nil {
+		return nil, err
+	}
+	ret := make(map[string]map[string]map[string][]string)
+	for _, key := range keys {
+		key = strings.TrimPrefix(key, string(os.PathSeparator))
+		parts := strings.Split(key, string(os.PathSeparator))
+		if len(parts) < 4 || len(parts) > 4 {
+			return nil, fmt.Errorf("invalid key %s", key)
+		}
+		// profileType := parts[0]
+		namespace := parts[1]
+		name := parts[2]
+		resourceName := parts[3]
+
+		if _, ok := ret[namespace]; !ok {
+			ret[namespace] = make(map[string]map[string][]string)
+		}
+		if _, ok := ret[namespace][name]; !ok {
+			ret[namespace][name] = make(map[string][]string)
+		}
+		if _, ok := ret[namespace][name][resourceName]; !ok {
+			ret[namespace][name][resourceName] = []string{}
+		}
+		ret[namespace][name][resourceName] = append(ret[namespace][name][resourceName], key)
+	}
+
+	for nsKey, ns := range ret {
+		for nameKey, name := range ns {
+			for nameRsc, keys := range name {
+				tempKeys := []string{}
+				tempKeys = append(tempKeys, keys...)
+				slices.Sort(tempKeys)
+				ret[nsKey][nameKey][nameRsc] = tempKeys
+			}
+		}
+	}
+
+	return ret, nil
 }
 
 // FIXME: this entire implementation is a hack

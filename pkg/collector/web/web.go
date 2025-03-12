@@ -3,6 +3,7 @@ package web
 import (
 	"fmt"
 	"log/slog"
+	"net/http"
 	"path"
 	"strings"
 
@@ -49,7 +50,7 @@ func (w *WebServer) Start() error {
 	})
 
 	router.GET("/dashboard", func(c *gin.Context) {
-		keys, err := w.store.ListKeys()
+		nsList, err := w.store.GroupKeys()
 		if err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return
@@ -63,18 +64,75 @@ func (w *WebServer) Start() error {
     		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 			<title>Profiles dashboard</title>
 		</head>
+		<script>
+			
+			let isHoveringIframe = false;
+			document.addEventListener("DOMContentLoaded", () => {
+				console.log("DOM fully loaded");
+				//document.body.addEventListener("wheel", onWheel);
+				document.body.addEventListener('mousewheel DOMMouseScroll', onWheel);
+				function onWheel (e){
+					console.log(e.target);
+					if (isHoveringIframe)
+						e.preventDefault();
+					console.log(e);
+				}
+				
+				document.querySelectorAll("iframe").forEach(iframe => {
+					iframe.onload = function() {
+					  const iframeDocument = iframe.contentWindow.document;
+
+						// Intercept wheel events in the iframe's content
+						iframeDocument.addEventListener('wheel', event => {
+								console.log(isHoveringIframe);
+								if (isHoveringIframe) {
+									console.log('Wheel event detected in iframe');
+									event.preventDefault();  // Prevent iframe scroll
+									event.stopImmediatePropagation();  // Prevent parent from scrolling
+							}
+						}, { passive: false });  // passive: false allows event.preventDefault()
+					};
+					console.log("Iframe found:", iframe);
+
+					iframe.addEventListener("load", () => {
+						iframe.addEventListener("mouseenter", event=> {
+							isHoveringIframe = true;
+						})
+
+						iframe.addEventListener("mouseleave", event=> {
+							isHoveringIframe = false;
+						})
+
+						iframe.addEventListener("wheel", event => {
+						    console.log("kill me");
+							event.stopPropagation(); // Prevents parent scroll
+						});
+					});
+				});
+			});
+			window.addEventListener("wheel", event => {
+					console.log("wheel event detected in window");
+					// event.preventDefault();
+			}, { passive: false }); // passive: false allows event.preventDefault()
+		</script>
 		<style>
+			body {
+				overflow: auto;
+			}
 			.iframe-container {
 				position: relative;
 				display: inline-block;
 				border: 1px solid #ccc;
 				resize: both;
 				overflow: hidden;
-				min-width: 300px;
-				min-height: 200px;
+				min-width: 600px;
+				min-height: 600px;
+				overflow: hidden;
 			}
 
 			iframe {
+				min-width: 600px;
+				min-height: 600px;
 				width: 100%;
 				height: 100%;
 				border: none;
@@ -88,6 +146,7 @@ func (w *WebServer) Start() error {
 				bottom: 0;
 				right: 0;
 				cursor: nwse-resize;
+				overflow: hidden;
 			}
     	</style>`
 		htmlContentBodyFmt := `
@@ -98,18 +157,39 @@ func (w *WebServer) Start() error {
 		</html>
 		`
 
-		toW := ""
+		sb := strings.Builder{}
 
-		if len(keys) == 0 || keys[0] == "" {
-			toW = "<h2> No profiles collected </h2>"
-		} else {
-			for _, key := range keys {
-				toW += fmt.Sprintf("<div class=\"iframe-container\" id=\"%s\"> <iframe src=\"%s/\"> %s </iframe> <div id=\"%s\" class=\"resizer\"> </div> </div><br/> ", key, path.Join(pprofPrefix, key), key, key)
+		for nsKey, names := range nsList {
+			sb.WriteString(fmt.Sprintf("<h1> Namespace : %s </h1>", nsKey))
+			for nameKey, resources := range names {
+				sb.WriteString(fmt.Sprintf("<h1> Service : %s </h1>", nameKey))
+				for resourceKey, keys := range resources {
+					sb.WriteString(fmt.Sprintf("<h1> Resource : %s </h1>", resourceKey))
+					for _, key := range keys {
+						parts := strings.Split(key, "/")
+						if len(parts) < 1 {
+							c.JSON(500, gin.H{"error": "invalid key while generator dashbord  " + key})
+							return
+						}
+						sb.WriteString("<h2> Profile Type : " + parts[0] + "</h2>")
+						sb.WriteString(
+							fmt.Sprintf("<div class=\"iframe-container\" id=\"iframe-container-%s\"> <iframe class=\"iframe\" id=\"iframe-%s\" src=\"%s\"> </iframe>  <div class=\"resizer\" id=\"resizer-%s\"> </div>   </div>",
+								key,
+								key,
+								path.Join(pprofPrefix, key)+"/",
+								key,
+							),
+						)
+						sb.WriteString("<br/>")
+					}
+				}
+				sb.WriteString("<br/>")
 			}
+			sb.WriteString("<br/>")
 		}
 
 		// Write raw HTML directly to the response
-		c.Writer.Write([]byte(htmlContentHead + fmt.Sprintf(htmlContentBodyFmt, toW)))
+		c.Writer.Write([]byte(htmlContentHead + fmt.Sprintf(htmlContentBodyFmt, sb.String())))
 	})
 
 	router.GET(path.Join(pprofPrefix, ":profileType", "*key"), func(c *gin.Context) {
@@ -161,8 +241,12 @@ func (w *WebServer) Start() error {
 		mux.ServeHTTP(c.Writer, c.Request)
 	})
 
-	// FIXME: this entire function is a mess, done for speed
 	router.GET("/", func(c *gin.Context) {
+		c.Redirect(http.StatusTemporaryRedirect, "/dashboard")
+	})
+
+	// FIXME: this entire function is a mess, done for speed
+	router.GET("/raw", func(c *gin.Context) {
 		keys, err := w.store.ListKeys()
 		if err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})

@@ -32,7 +32,8 @@ func TestStorage(t *testing.T) {
 		start,
 		now,
 		profileType,
-		"pod/example1",
+		// TODO : should validate there are no path separtors in the key itself from the storage impl? but this impl is temporary anyways
+		"pod-example1",
 		map[string]string{
 			labels.NamespaceLabel: "default",
 			labels.NameLabel:      "example1",
@@ -42,7 +43,7 @@ func TestStorage(t *testing.T) {
 
 	assert.NoError(t, err)
 
-	const expected = "default/example1/pod/example1"
+	const expected = "default/example1/pod-example1"
 
 	filepaths, err := store.Get("profile", expected)
 	assert.NoError(t, err)
@@ -61,7 +62,7 @@ func TestStorage(t *testing.T) {
 		start2,
 		end,
 		profileType,
-		"pod/example1",
+		"pod-example1",
 		map[string]string{
 			labels.NamespaceLabel: "default",
 			labels.NameLabel:      "example1",
@@ -85,5 +86,18 @@ func TestStorage(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, keys, 1)
 	assert.Equal(t, []string{"/" + path.Join(profileType, expected)}, keys)
+
+	groupedKeys, err := store.GroupKeys()
+	assert.NoError(t, err)
+	assert.Len(t, groupedKeys, 1)
+	assert.Equal(t, map[string]map[string]map[string][]string{
+		"default": {
+			"example1": {
+				"pod-example1": []string{
+					path.Join(profileType, expected),
+				},
+			},
+		},
+	}, groupedKeys)
 
 }
