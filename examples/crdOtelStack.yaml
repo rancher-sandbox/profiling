@@ -1,0 +1,38 @@
+apiVersion: resources.cattle.io/v1alpha1
+kind : PprofMonitor
+metadata:
+  name: pprofmonitor-otel-node
+  namespace: pprof-controller
+spec:
+  selector:
+    matchLabels:
+      otel.io/stack: stack-example-node
+  namespaceSelector:
+    any : true
+  endpoint:
+    targetPort : pprof
+  config:
+    profile:
+      seconds : 120
+    heap:
+      seconds : 120
+---
+
+apiVersion: resources.cattle.io/v1alpha1
+kind : PprofMonitor
+metadata:
+  name: pprofmonitor-gateway
+  namespace: pprof-controller
+spec:
+  selector:
+    matchLabels:
+      otel.io/stack: stack-example-gateway
+  namespaceSelector:
+    any : true
+  endpoint:
+    targetPort : pprof
+  config:
+    profile:
+      seconds : 120
+    heap:
+      seconds : 120

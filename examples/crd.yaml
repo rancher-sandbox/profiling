@@ -11,3 +11,8 @@ spec:
     any : true
   endpoint:
     targetPort : 80
+  config:
+    profile:
+      seconds : 120
+    heap:
+      seconds : 120
