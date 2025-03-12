@@ -142,6 +142,7 @@ func (c *Monitor) start(ctx context.Context, reqs []reqWrapper) {
 		go func() {
 			logger := c.logger.With("name", c.config.Name, "endpoint", doReq.URL.Path)
 			for {
+			RETRY:
 				select {
 				case <-c.stopper:
 					logger.Info("monitor shutdown")
@@ -158,12 +159,15 @@ func (c *Monitor) start(ctx context.Context, reqs []reqWrapper) {
 						data, err := io.ReadAll(resp.Body)
 						if err != nil {
 							logger.Error(err.Error())
+							// FIXME: backoff retrier
+							time.Sleep(5 * time.Second)
+							goto RETRY
 						}
-						logger.With("start-time", startTime, "end-time", endTime, "size", len(data)).Info("got response")
+						logger.With("start-time", startTime, "end-time", endTime, "size", len(data)).Debug("got response")
 						if err := c.store.Put(startTime, endTime, req.profileType, c.config.Name, c.config.Labels, data); err != nil {
 							logger.With("err", err).Error("failed to store profile")
 						}
-						logger.With("start-time", startTime, "end-time", endTime, "size", len(data)).Info("stored response")
+						logger.With("start-time", startTime, "end-time", endTime, "size", len(data)).Debug("stored response")
 					}
 				}
 			}

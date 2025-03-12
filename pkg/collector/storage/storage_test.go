@@ -21,10 +21,11 @@ func TestStorage(t *testing.T) {
 	assert.NotNil(t, store)
 	now := time.Now()
 	start := now.Add(-time.Minute)
+	const profileType = "profile"
 	err = store.Put(
 		start,
 		now,
-		"profile",
+		profileType,
 		"pod/example1",
 		map[string]string{
 			labels.NamespaceLabel: "default",
@@ -35,20 +36,20 @@ func TestStorage(t *testing.T) {
 
 	assert.NoError(t, err)
 
-	const expected = "default/example1/pod/example1/profile"
+	const expected = "default/example1/pod/example1"
 
-	filepaths, err := store.Get(expected)
+	filepaths, err := store.Get("profile", expected)
 	assert.NoError(t, err)
 	assert.Len(t, filepaths, 1)
-	assert.Equal(t, filepaths, []string{
-		path.Join(pathName, expected, fmt.Sprintf("%d_%d", start.UnixNano(), now.UnixNano())),
-	})
+	assert.Equal(t, []string{
+		path.Join(pathName, profileType, expected, fmt.Sprintf("%d_%d", start.UnixNano(), now.UnixNano())),
+	}, filepaths)
 	start2 := time.Now()
 	end := start.Add(time.Minute)
 	err = store.Put(
 		start2,
 		end,
-		"profile",
+		profileType,
 		"pod/example1",
 		map[string]string{
 			labels.NamespaceLabel: "default",
@@ -58,12 +59,17 @@ func TestStorage(t *testing.T) {
 	)
 
 	assert.NoError(t, err)
-	filepaths2, err := store.Get(expected)
+	filepaths2, err := store.Get(profileType, expected)
 	assert.NoError(t, err)
 	assert.Len(t, filepaths2, 2)
-	assert.Equal(t, filepaths2, []string{
-		path.Join(pathName, expected, fmt.Sprintf("%d_%d", start.UnixNano(), now.UnixNano())),
-		path.Join(pathName, expected, fmt.Sprintf("%d_%d", start2.UnixNano(), end.UnixNano())),
-	})
+	assert.Equal(t, []string{
+		path.Join(pathName, profileType, expected, fmt.Sprintf("%d_%d", start.UnixNano(), now.UnixNano())),
+		path.Join(pathName, profileType, expected, fmt.Sprintf("%d_%d", start2.UnixNano(), end.UnixNano())),
+	}, filepaths2)
+
+	keys, err := store.ListKeys()
+	assert.NoError(t, err)
+	assert.Len(t, keys, 1)
+	assert.Equal(t, []string{"/" + path.Join(profileType, expected)}, keys)
 
 }

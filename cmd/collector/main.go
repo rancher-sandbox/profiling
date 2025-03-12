@@ -71,14 +71,6 @@ func BuildCollectorCmd() *cobra.Command {
 			}
 			store = storage.NewLabelBasedFileStore(dataDir, []string{labels.NamespaceLabel, labels.NameLabel})
 
-			webServer := web.NewWebServer(logger, webPort, store)
-			errC := func() chan error {
-				errC := make(chan error)
-				go func() {
-					errC <- webServer.Start()
-				}()
-				return errC
-			}()
 			logger.With("config", configFile).Info("starting collector")
 
 			// start collector
@@ -87,6 +79,28 @@ func BuildCollectorCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed to start collector: %w", err)
 			}
+			reloadF := func() error {
+				logger.Info("reloading collector config...")
+				data, err := os.ReadFile(configFile)
+				if err != nil {
+					return fmt.Errorf("failed to read config during reload file: %w", err)
+				}
+				if err := yaml.Unmarshal(data, &cfg); err != nil {
+					return fmt.Errorf("failed to unmarshal config file during reload: %w", err)
+				}
+				if err := c.Reload(cfg); err != nil {
+					return fmt.Errorf("failed to reload config: %w", err)
+				}
+				return nil
+			}
+			webServer := web.NewWebServer(logger, webPort, store, reloadF)
+			errC := func() chan error {
+				errC := make(chan error)
+				go func() {
+					errC <- webServer.Start()
+				}()
+				return errC
+			}()
 			for {
 				select {
 				case <-stopper:
@@ -100,16 +114,8 @@ func BuildCollectorCmd() *cobra.Command {
 					}
 					return fmt.Errorf("failed to start web UI")
 				case <-reloader:
-					logger.Info("reloading collector config...")
-					data, err := os.ReadFile(configFile)
-					if err != nil {
-						return fmt.Errorf("failed to read config during reload file: %w", err)
-					}
-					if err := yaml.Unmarshal(data, &cfg); err != nil {
-						return fmt.Errorf("failed to unmarshal config file during reload: %w", err)
-					}
-					if err := c.Reload(cfg); err != nil {
-						return fmt.Errorf("failed to reload config: %w", err)
+					if err := reloadF(); err != nil {
+						logger.With("err", err).Error("failed to reload config")
 					}
 				}
 			}

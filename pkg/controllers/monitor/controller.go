@@ -68,6 +68,7 @@ func Register(
 		h.pprofFactory.Resources().V1alpha1().PprofMonitor(),
 		core.V1().Service(),
 		core.V1().Endpoints(),
+		core.V1().ConfigMap(),
 	)
 	// TODO : we want to watch config map changes to this namespace / owner
 
@@ -228,8 +229,9 @@ func endpSubsetToAddresses(endpAndSvc serviceAndEndpoint, target v1alpha1.Endpoi
 		for _, ip := range subset.Addresses {
 			for _, port := range actualPorts {
 				addrWithoutSchemePath = append(addrWithoutSchemePath, directAddrAndFriendlyName{
-					addr:         fmt.Sprintf("%s:%d", ip.IP, port),
-					friendlyName: ip.TargetRef.Kind + "/" + ip.TargetRef.Namespace + "/" + ip.TargetRef.Name,
+					addr: fmt.Sprintf("%s:%d", ip.IP, port),
+					// Note : do not include any '/' in the friendly name it will confuse the hacky storage implementation
+					friendlyName: ip.TargetRef.Name,
 				})
 			}
 		}
@@ -340,19 +342,20 @@ func (h *PprofHandler) OnPprofMonitorChange(_ string, monitor *v1alpha1.PprofMon
 	for _, mon := range constructed {
 		for _, addr := range mon.addresses {
 			cfg.Monitors = append(cfg.Monitors, &config.MonitorConfig{
-				Name:     mon.monitor.Name,
+				Name:     addr.friendlyName,
 				Endpoint: addr.addr,
 				Labels: map[string]string{
 					collabels.NamespaceLabel: mon.k8snamespace,
 					collabels.NameLabel:      mon.k8sname,
 				},
-				GlobalSampling: mon.monitor.Spec.Endpoint.Config.GlobalSampling,
+				GlobalSampling: mon.monitor.Spec.Config,
 			})
 		}
 	}
-
+	// FIXME: configurable
 	cfg.SelfTelemetry = &config.SelfTelemetryConfig{
-		PprofPort: 6060,
+		PprofPort:       6060,
+		IntervalSeconds: 120,
 	}
 
 	objs, err := h.Objects(cfg)

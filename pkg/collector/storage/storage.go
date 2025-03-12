@@ -15,7 +15,7 @@ import (
 type Store interface {
 	Put(startTime, endTime time.Time, profileType string, key string, labels map[string]string, value []byte) error
 	ListKeys() ([]string, error)
-	Get(key string) (filepaths []string, err error)
+	Get(profileType, key string) (filepaths []string, err error)
 }
 
 type LabelBasedFileStore struct {
@@ -35,9 +35,10 @@ var _ Store = (*LabelBasedFileStore)(nil)
 
 func (s *LabelBasedFileStore) basePath(
 	labels map[string]string,
+	profileType string,
 	key string,
 ) (string, error) {
-	base := s.DataDir
+	base := path.Join(s.DataDir, profileType)
 	for _, idx := range s.IndexBy {
 		if _, ok := labels[idx]; !ok {
 			return "", fmt.Errorf("missing label %s to use as index", idx)
@@ -49,11 +50,10 @@ func (s *LabelBasedFileStore) basePath(
 }
 
 func (s *LabelBasedFileStore) Put(startTime, endTime time.Time, profileType, key string, labels map[string]string, value []byte) error {
-	basePath, err := s.basePath(labels, key)
+	basePath, err := s.basePath(labels, profileType, key)
 	if err != nil {
 		return err
 	}
-	basePath = path.Join(basePath, profileType)
 
 	startNano := startTime.UnixNano()
 	endNano := endTime.UnixNano()
@@ -107,10 +107,14 @@ func (s *LabelBasedFileStore) ListKeys() ([]string, error) {
 	return ret, nil
 }
 
-func (s *LabelBasedFileStore) Get(fullKey string) (filepaths []string, err error) {
-	basePath := path.Join(s.DataDir, fullKey)
+func (s *LabelBasedFileStore) Get(profileType, key string) (filepaths []string, err error) {
+	basePath := path.Join(s.DataDir, profileType)
+	basePath = path.Join(basePath, key)
 	ret := []string{}
 	err = filepath.Walk(basePath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
 		if !info.IsDir() {
 			ret = append(ret, path)
 		}

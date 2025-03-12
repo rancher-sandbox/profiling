@@ -1,5 +1,7 @@
 package collector
 
+//FIXME: this is a hack, we should create a collector to CR and apply changes to the managed resources
+
 import (
 	"context"
 	"fmt"
@@ -17,7 +19,7 @@ type CollectorHandler struct {
 	Apply apply.Apply
 }
 
-func (h *CollectorHandler) OnChange(key string, deploy *appsv1.Deployment) (*appsv1.Deployment, error) {
+func (h *CollectorHandler) OnChange(key string, deploy *appsv1.StatefulSet) (*appsv1.StatefulSet, error) {
 	// apply objects
 	logrus.Warn("on change", key)
 	applier := h.Apply.WithSetID(fmt.Sprintf("pprof-controller-collector-%s", h.OperatorOptions.OperatorName))
@@ -27,7 +29,7 @@ func (h *CollectorHandler) OnChange(key string, deploy *appsv1.Deployment) (*app
 	return deploy, nil
 }
 
-func (h *CollectorHandler) OnRemove(key string, deploy *appsv1.Deployment) (*appsv1.Deployment, error) {
+func (h *CollectorHandler) OnRemove(key string, deploy *appsv1.StatefulSet) (*appsv1.StatefulSet, error) {
 	// apply objects
 	logrus.Warn("on remove", key)
 	applier := h.Apply.WithSetID(fmt.Sprintf("pprof-controller-collector-%s", h.OperatorOptions.OperatorName))
@@ -45,18 +47,19 @@ func Register(
 	apps apps.Interface,
 	applier apply.Apply,
 ) {
-	// TODO : add a CR to reconcile the collector deployment instead of watching deployment changes directly
-	// and using deployment reconcilers
 
 	applier = applier.WithSetOwnerReference(true, false).WithCacheTypes(
-		apps.V1().Deployment(),
+		apps.V1().StatefulSet(),
+		core.V1().ConfigMap(),
+		core.V1().Service(),
+		core.V1().PersistentVolumeClaim(),
 	)
 	handler := &CollectorHandler{
 		OperatorOptions: operatorOpts,
 		Apply:           applier,
 	}
 
-	apps.V1().Deployment().OnChange(ctx, "collector-controller", handler.OnChange)
-	apps.V1().Deployment().OnRemove(ctx, "collector-controller", handler.OnRemove)
+	apps.V1().StatefulSet().OnChange(ctx, "collector-controller", handler.OnChange)
+	apps.V1().StatefulSet().OnRemove(ctx, "collector-controller", handler.OnRemove)
 
 }

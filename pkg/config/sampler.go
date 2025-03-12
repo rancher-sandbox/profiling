@@ -7,7 +7,8 @@ type CollectorConfig struct {
 }
 
 type SelfTelemetryConfig struct {
-	PprofPort int `json:"pprof_port" yaml:"pprof_port"`
+	PprofPort       int `json:"pprof_port" yaml:"pprof_port"`
+	IntervalSeconds int `json:"interval_seconds" yaml:"interval_seconds"`
 }
 
 type SamplerConfig struct {
@@ -33,4 +34,41 @@ type GlobalSamplingConfig struct {
 	Trace       *SamplerConfig `json:"trace" yaml:"trace"`
 	// TODO : unused fields
 	Compression string
+}
+
+// FIXME: didn't check this is fully working as expected
+func (g *GlobalSamplingConfig) DeepCopyInto(out *GlobalSamplingConfig) {
+	*out = *g
+	if g.Allocs != nil {
+		allocs := *g.Allocs
+		out.Allocs = &allocs
+	}
+	if g.Block != nil {
+		block := *g.Block
+		out.Block = &block
+	}
+	if g.Goroutine != nil {
+		goroutine := *g.Goroutine
+		out.Goroutine = &goroutine
+	}
+	if g.Heap != nil {
+		heap := *g.Heap
+		out.Heap = &heap
+	}
+	if g.Mutex != nil {
+		mutex := *g.Mutex
+		out.Mutex = &mutex
+	}
+	if g.Profile != nil {
+		profile := *g.Profile
+		out.Profile = &profile
+	}
+	if g.ThreadCrate != nil {
+		threadCreate := *g.ThreadCrate
+		out.ThreadCrate = &threadCreate
+	}
+	if g.Trace != nil {
+		trace := *g.Trace
+		out.Trace = &trace
+	}
 }

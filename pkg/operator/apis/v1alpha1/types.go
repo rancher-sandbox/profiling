@@ -24,6 +24,9 @@ type PprofSpec struct {
 	NamespaceSelector NamespaceSelector `json:"namespaceSelector,omitempty"`
 
 	Endpoint Endpoint `json:"endpoint,omitempty"`
+	// TODO : document config
+	// TODO : pass in as pointer, and handle nil pointer with default config in controller
+	Config config.GlobalSamplingConfig `json:"config,omitempty"`
 }
 
 type NamespaceSelector struct {
@@ -48,8 +51,6 @@ type Endpoint struct {
 	// If empty, Prometheus uses the default value `http`.
 	// +kubebuilder:validation:Enum=http;https
 	Scheme string `json:"scheme,omitempty"`
-	// TODO : document config
-	Config config.MonitorConfig `json:"config,omitempty"`
 }
 
 type PprofStatus struct {

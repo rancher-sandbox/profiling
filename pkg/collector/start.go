@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/alexandreLamarre/pprof-controller/pkg/collector/labels"
+	"github.com/alexandreLamarre/pprof-controller/pkg/collector/monitor"
 	"github.com/alexandreLamarre/pprof-controller/pkg/collector/storage"
 	"github.com/alexandreLamarre/pprof-controller/pkg/config"
-	"github.com/alexandreLamarre/pprof-controller/pkg/monitor"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -64,10 +64,10 @@ func (c *Collector) Start(ctx context.Context) error {
 			},
 			GlobalSampling: config.GlobalSamplingConfig{
 				Profile: &config.SamplerConfig{
-					Seconds: 5,
+					Seconds: c.Config.SelfTelemetry.IntervalSeconds,
 				},
 				Heap: &config.SamplerConfig{
-					Seconds: 5,
+					Seconds: c.Config.SelfTelemetry.IntervalSeconds,
 				},
 			},
 		},

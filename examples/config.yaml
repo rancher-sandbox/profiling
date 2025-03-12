@@ -1,5 +1,6 @@
 self_telemetry:
   pprof_port : 7000
+  interval_seconds : 5
 # monitors:
 #   - name : test
 #     endpoint : http://localhost:6060
