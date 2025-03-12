@@ -47,6 +47,71 @@ func (w *WebServer) Start() error {
 		}
 		c.JSON(200, gin.H{"message": "reloaded"})
 	})
+
+	router.GET("/dashboard", func(c *gin.Context) {
+		keys, err := w.store.ListKeys()
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+
+		htmlContentHead := `
+		<!DOCTYPE html>
+		<html lang="en">
+		<head>
+			<meta charset="UTF-8">
+    		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+			<title>Profiles dashboard</title>
+		</head>
+		<style>
+			.iframe-container {
+				position: relative;
+				display: inline-block;
+				border: 1px solid #ccc;
+				resize: both;
+				overflow: hidden;
+				min-width: 300px;
+				min-height: 200px;
+			}
+
+			iframe {
+				width: 100%;
+				height: 100%;
+				border: none;
+			}
+
+			.resizer {
+				position: absolute;
+				width: 15px;
+				height: 15px;
+				background: gray;
+				bottom: 0;
+				right: 0;
+				cursor: nwse-resize;
+			}
+    	</style>`
+		htmlContentBodyFmt := `
+
+		<body>
+			%s
+		</body>
+		</html>
+		`
+
+		toW := ""
+
+		if len(keys) == 0 || keys[0] == "" {
+			toW = "<h2> No profiles collected </h2>"
+		} else {
+			for _, key := range keys {
+				toW += fmt.Sprintf("<div class=\"iframe-container\" id=\"%s\"> <iframe src=\"%s/\"> %s </iframe> <div id=\"%s\" class=\"resizer\"> </div> </div><br/> ", key, path.Join(pprofPrefix, key), key, key)
+			}
+		}
+
+		// Write raw HTML directly to the response
+		c.Writer.Write([]byte(htmlContentHead + fmt.Sprintf(htmlContentBodyFmt, toW)))
+	})
+
 	router.GET(path.Join(pprofPrefix, ":profileType", "*key"), func(c *gin.Context) {
 		logger := w.logger.With("path", c.Request.URL.Path)
 		logger.Debug("received request")
