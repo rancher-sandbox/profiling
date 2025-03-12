@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"time"
 
+	"github.com/alexandreLamarre/pprof-controller/pkg/collector/labels"
+	"github.com/alexandreLamarre/pprof-controller/pkg/collector/storage"
 	"github.com/alexandreLamarre/pprof-controller/pkg/config"
 	"github.com/alexandreLamarre/pprof-controller/pkg/monitor"
 	"golang.org/x/sync/errgroup"
@@ -17,14 +20,16 @@ type Collector struct {
 	pprofServer *http.Server
 	Config      *config.CollectorConfig
 	Monitors    []*monitor.Monitor
+	Store       storage.Store
 }
 
-func NewCollector(ctx context.Context, logger *slog.Logger, cfg *config.CollectorConfig) *Collector {
+func NewCollector(ctx context.Context, logger *slog.Logger, cfg *config.CollectorConfig, store storage.Store) *Collector {
 	return &Collector{
 		ctx:      ctx,
 		logger:   logger,
 		Config:   cfg,
 		Monitors: nil,
+		Store:    store,
 	}
 }
 
@@ -33,6 +38,7 @@ func (c *Collector) Start(ctx context.Context) error {
 
 	if c.Config.SelfTelemetry != nil {
 		addr := fmt.Sprintf("127.0.0.1:%d", c.Config.SelfTelemetry.PprofPort)
+		c.logger.With("addr", addr).Info("configuring internal pprof server")
 		server := &http.Server{
 			Addr:    addr,
 			Handler: nil,
@@ -42,7 +48,7 @@ func (c *Collector) Start(ctx context.Context) error {
 			panic("pprof server should be nil here")
 		}
 		go func() {
-			c.logger.With("addr", addr).Info("starting pprof server")
+			c.logger.With("addr", addr).Info("launching pprof server")
 			if err := server.ListenAndServe(); err != nil {
 				c.logger.Error(err.Error())
 			}
@@ -51,17 +57,45 @@ func (c *Collector) Start(ctx context.Context) error {
 		mon := monitor.NewMonitor(c.logger, &config.MonitorConfig{
 			Name:     "__self",
 			Endpoint: fmt.Sprintf("http://%s", addr),
+			Labels: map[string]string{
+				// FIXME: temporary hack
+				labels.NamespaceLabel: "self",
+				labels.NameLabel:      "self",
+			},
 			GlobalSampling: config.GlobalSamplingConfig{
 				Profile: &config.SamplerConfig{
 					Seconds: 5,
 				},
+				Heap: &config.SamplerConfig{
+					Seconds: 5,
+				},
 			},
-		})
+		},
+			c.Store,
+		)
+
+		// FIXME: hack
+		maxRetries := 5
+		for range maxRetries {
+			req, err := http.NewRequest("GET", fmt.Sprintf("http://%s/debug/pprof", addr), nil)
+			if err != nil {
+				panic(err)
+			}
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				c.logger.Warn("error connecting to internal pprof server, retrying...")
+				time.Sleep(5 * time.Second)
+				continue
+			}
+			c.logger.Info("connected to internal pprof server")
+			resp.Body.Close()
+		}
 		mons = append(mons, mon)
 	}
-	c.logger.With("len", len(c.Config.Monitors)).Info("starting monitors...")
+
+	c.logger.With("len", len(c.Config.Monitors)).Info("starting external monitors...")
 	for _, cfg := range c.Config.Monitors {
-		mons = append(mons, monitor.NewMonitor(c.logger, cfg))
+		mons = append(mons, monitor.NewMonitor(c.logger, cfg, c.Store))
 	}
 	c.Monitors = mons
 	for _, mon := range c.Monitors {

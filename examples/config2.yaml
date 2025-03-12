@@ -1,4 +1,5 @@
-self_telemetry: null
+self_telemetry: 
+  pprof_port : 7000
 monitors:
     - name: Pod/default/pprof-example-deployment-55c897bb65-8n5js
       endpoint: http://10.42.0.38:6060

@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	collabels "github.com/alexandreLamarre/pprof-controller/pkg/collector/labels"
 	"github.com/alexandreLamarre/pprof-controller/pkg/config"
 	"github.com/alexandreLamarre/pprof-controller/pkg/controllers/common"
 	"github.com/alexandreLamarre/pprof-controller/pkg/operator/apis/v1alpha1"
@@ -251,11 +252,15 @@ func endpSubsetToAddresses(endpAndSvc serviceAndEndpoint, target v1alpha1.Endpoi
 		addrAndName.addr = newAddr
 		ret = append(ret, addrAndName)
 	}
-	// for _, addrAndName := range ret {
-	// 	logrus.Infof("got addrAndName : %s : %s", addrAndName.friendlyName, addrAndName.addr)
-	// }
 
 	return ret
+}
+
+type MonitorAndAddresses struct {
+	monitor      *v1alpha1.PprofMonitor
+	addresses    []directAddrAndFriendlyName
+	k8sname      string
+	k8snamespace string
 }
 
 func (h *PprofHandler) OnPprofMonitorChange(_ string, monitor *v1alpha1.PprofMonitor) (*v1alpha1.PprofMonitor, error) {
@@ -270,26 +275,20 @@ func (h *PprofHandler) OnPprofMonitorChange(_ string, monitor *v1alpha1.PprofMon
 
 	monitorList := []*v1alpha1.PprofMonitor{}
 	for _, ns := range nsList {
-		// logger.With("namespace", ns.Name).Debug("gathering monitorings")
 		pprofs, err := h.monitorCache.List(ns.Name, labels.Everything())
 		if err != nil {
-			// h.Logger.With("namespace", ns.Name, "err", err).Error("failed to list pprof monitors")
 			return monitor, err
 		}
-		// h.Logger.With("namespace", ns.Name, "len", len(pprofs)).Info("got monitors")
 		monitorList = append(monitorList, pprofs...)
 	}
-	// logger.With("len", len(monitorList)).Info("got total monitors to process")
 
-	allAddresses := []directAddrAndFriendlyName{}
+	constructed := []MonitorAndAddresses{}
 
 	for _, mon := range monitorList {
 		selectedNs := nsSelectorToList(nsList, mon.Spec.NamespaceSelector)
-		// logger.With("monitor", mon.Name, "namespaces", len(selectedNs)).Info("got namespaces to process")
 
 		endpAndServiceList, err := endpSelectorToList(selectedNs, h.serviceCache, h.endpointCache, mon.Spec.Selector)
 		if err != nil {
-			// logger.With("monitor", mon.Name, "err", err).Error("failed to list endpoints")
 			return monitor, nil
 		}
 
@@ -297,39 +296,59 @@ func (h *PprofHandler) OnPprofMonitorChange(_ string, monitor *v1alpha1.PprofMon
 
 		for _, endp := range endpAndServiceList {
 			addresses := endpSubsetToAddresses(endp, mon.Spec.Endpoint)
-			allAddresses = append(allAddresses, addresses...)
-			// logger.With("monitor", mon.Name, "endpoint", endp.endp.Name).Info("got addresses to process", "addresses", addresses)
+			slices.SortFunc(addresses, func(a, b directAddrAndFriendlyName) int {
+				if a.friendlyName < b.friendlyName {
+					return -1
+				}
+				if a.friendlyName > b.friendlyName {
+					return 1
+				}
+				return 0
+			})
+			constructed = append(constructed, MonitorAndAddresses{
+				monitor:      mon,
+				addresses:    addresses,
+				k8sname:      endp.endp.Name,
+				k8snamespace: endp.endp.Namespace,
+			})
 		}
 	}
 
-	slices.SortFunc(allAddresses, func(a, b directAddrAndFriendlyName) int {
-		if a.friendlyName < b.friendlyName {
+	slices.SortFunc(constructed, func(a, b MonitorAndAddresses) int {
+		if a.monitor.Namespace > b.monitor.Namespace {
+			return 1
+		}
+		if a.monitor.Namespace < b.monitor.Namespace {
 			return -1
 		}
-		if a.friendlyName > b.friendlyName {
+		if a.monitor.Name < b.monitor.Name {
+			return -1
+		}
+		if a.monitor.Name > b.monitor.Name {
 			return 1
 		}
 		return 0
 	})
 
-	logger.With("len", len(allAddresses)).Info("got total addresses to process")
+	logger.With("len", len(constructed)).Info("got total monitor configurations to process")
 
 	cfg := config.CollectorConfig{
 		SelfTelemetry: nil,
 		Monitors:      []*config.MonitorConfig{},
 	}
 
-	for _, addr := range allAddresses {
-		cfg.Monitors = append(cfg.Monitors, &config.MonitorConfig{
-			Name:     addr.friendlyName,
-			Endpoint: addr.addr,
-			// TODO : have to associate monitors with their addresses and pass in the config here
-			GlobalSampling: config.GlobalSamplingConfig{
-				Profile: &config.SamplerConfig{
-					Seconds: 5,
+	for _, mon := range constructed {
+		for _, addr := range mon.addresses {
+			cfg.Monitors = append(cfg.Monitors, &config.MonitorConfig{
+				Name:     mon.monitor.Name,
+				Endpoint: addr.addr,
+				Labels: map[string]string{
+					collabels.NamespaceLabel: mon.k8snamespace,
+					collabels.NameLabel:      mon.k8sname,
 				},
-			},
-		})
+				GlobalSampling: mon.monitor.Spec.Endpoint.Config.GlobalSampling,
+			})
+		}
 	}
 
 	cfg.SelfTelemetry = &config.SelfTelemetryConfig{

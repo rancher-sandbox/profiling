@@ -18,6 +18,7 @@ type MonitorConfig struct {
 	// Name starting with `__`` are reserved for internal monitors
 	Name           string               `json:"name" yaml:"name"`
 	Endpoint       string               `json:"endpoint" yaml:"endpoint"`
+	Labels         map[string]string    `json:"labels" yaml:"labels"`
 	GlobalSampling GlobalSamplingConfig `json:"sampling" yaml:"sampling"`
 }
 

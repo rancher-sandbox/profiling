@@ -6,12 +6,15 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"time"
 
+	"github.com/alexandreLamarre/pprof-controller/pkg/collector/storage"
 	"github.com/alexandreLamarre/pprof-controller/pkg/config"
 )
 
 type reqWrapper struct {
-	req *http.Request
+	req         *http.Request
+	profileType string
 }
 
 type Monitor struct {
@@ -20,14 +23,16 @@ type Monitor struct {
 
 	stopper chan struct{}
 	ca      context.CancelFunc
+	store   storage.Store
 }
 
-func NewMonitor(logger *slog.Logger, config *config.MonitorConfig) *Monitor {
+func NewMonitor(logger *slog.Logger, config *config.MonitorConfig, store storage.Store) *Monitor {
 	return &Monitor{
 		logger:  logger,
 		config:  config,
 		stopper: nil,
 		ca:      nil,
+		store:   store,
 	}
 }
 
@@ -46,7 +51,8 @@ func (c *Monitor) constructRequest(suffix string, seconds int) (reqWrapper, erro
 		return reqWrapper{}, err
 	}
 	return reqWrapper{
-		req: req,
+		req:         req,
+		profileType: suffix,
 	}, err
 }
 
@@ -114,12 +120,13 @@ func (c *Monitor) requestsFromMonitorConfig() ([]reqWrapper, error) {
 
 // Spawns a goroutine to start monitor collection
 func (c *Monitor) Start(ctx context.Context) error {
-	c.logger.With("name", c.config.Name).Info("configuring monitor...")
+	logger := c.logger.With("name", c.config.Name)
+	logger.Info("configuring monitor...")
 	reqs, err := c.requestsFromMonitorConfig()
 	if err != nil {
 		return err
 	}
-	c.logger.With("numRequests", len(reqs)).Info("monitors configured, starting...")
+	logger.With("numRequests", len(reqs)).Info("monitors configured, starting...")
 	c.start(ctx, reqs)
 	return nil
 }
@@ -133,23 +140,30 @@ func (c *Monitor) start(ctx context.Context, reqs []reqWrapper) {
 		req := req
 		doReq := req.req.WithContext(ctxca)
 		go func() {
+			logger := c.logger.With("name", c.config.Name, "endpoint", doReq.URL.Path)
 			for {
 				select {
 				case <-c.stopper:
-					c.logger.With("name", c.config.Name, "endpoint", doReq.URL.Path).Info("monitor shutdown")
+					logger.Info("monitor shutdown")
 					c.ca()
 					return
 				default:
-					c.logger.With("name", c.config.Name, "endpoint", doReq.URL.Path).Debug("sending request")
+					logger.Debug("sending request")
+					startTime := time.Now()
 					resp, err := client.Do(doReq)
+					endTime := time.Now()
 					if err != nil {
-						c.logger.Error(err.Error())
+						logger.Error(err.Error())
 					} else {
 						data, err := io.ReadAll(resp.Body)
 						if err != nil {
-							c.logger.Error(err.Error())
+							logger.Error(err.Error())
 						}
-						c.logger.With("name", c.config.Name, "endpoint", doReq.URL.Path, "size", len(data)).Debug("got response")
+						logger.With("start-time", startTime, "end-time", endTime, "size", len(data)).Info("got response")
+						if err := c.store.Put(startTime, endTime, req.profileType, c.config.Name, c.config.Labels, data); err != nil {
+							logger.With("err", err).Error("failed to store profile")
+						}
+						logger.With("start-time", startTime, "end-time", endTime, "size", len(data)).Info("stored response")
 					}
 				}
 			}
@@ -160,7 +174,10 @@ func (c *Monitor) start(ctx context.Context, reqs []reqWrapper) {
 
 func (c *Monitor) Shutdown() error {
 	c.logger.With("name", c.config.Name).Info("shutting down monitor...")
-	c.ca()
+	// FIXME: hack
+	if c.ca != nil {
+		c.ca()
+	}
 	close(c.stopper)
 	// select {
 	// case c.stopper <- struct{}{}:
