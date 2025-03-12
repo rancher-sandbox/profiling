@@ -60,7 +60,7 @@ func (c *Monitor) requestsFromMonitorConfig() ([]reqWrapper, error) {
 	reqs := []reqWrapper{}
 
 	if c.config.GlobalSampling.Allocs != nil {
-		req, err := c.constructRequest("alloc", c.config.GlobalSampling.Allocs.Seconds)
+		req, err := c.constructRequest("allocs", c.config.GlobalSampling.Allocs.Seconds)
 		if err != nil {
 			return nil, err
 		}
