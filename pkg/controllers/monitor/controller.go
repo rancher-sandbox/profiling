@@ -294,7 +294,7 @@ func (h *PprofHandler) OnPprofMonitorChange(_ string, monitor *v1alpha1.PprofMon
 			return monitor, nil
 		}
 
-		logger.With("monitor", mon.Name, "endpoints", len(endpAndServiceList)).Info("got endpoints to process")
+		logger.With("monitor", mon.Name, "endpoints", len(endpAndServiceList)).Debug("got endpoints to process")
 
 		for _, endp := range endpAndServiceList {
 			addresses := endpSubsetToAddresses(endp, mon.Spec.Endpoint)
@@ -332,7 +332,7 @@ func (h *PprofHandler) OnPprofMonitorChange(_ string, monitor *v1alpha1.PprofMon
 		return 0
 	})
 
-	logger.With("len", len(constructed)).Info("got total monitor configurations to process")
+	logger.With("len", len(constructed)).Debug("got total monitor configurations to process")
 
 	cfg := config.CollectorConfig{
 		SelfTelemetry: nil,

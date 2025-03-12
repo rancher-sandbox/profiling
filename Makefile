@@ -10,4 +10,4 @@ build-operator:
 	go build -o bin/operator ./cmd/operator
 
 local: build-collector
-	./bin/collector -c ./examples/config.yaml
+	./bin/collector -c ./examples/local/config.yaml

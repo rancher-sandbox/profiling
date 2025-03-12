@@ -31,11 +31,12 @@ func BuildOperatorCmd() *cobra.Command {
 				return err
 			}
 
-			requiredCrd := crd.NamespacedType("PprofMonitor.resources.cattle.io/v1alpha1").WithSchemaFromStruct(&v1alpha1.PprofMonitor{})
+			requiredCrds := []crd.CRD{
+				crd.NamespacedType("PprofMonitor.resources.cattle.io/v1alpha1").WithSchemaFromStruct(&v1alpha1.PprofMonitor{}),
+				crd.NamespacedType("PprofCollectorStack.resources.cattle.io/v1alpha1").WithSchemaFromStruct(&v1alpha1.PprofCollectorStack{}),
+			}
 
-			if err := createCrd(context.Background(), restKubeConfig, []crd.CRD{
-				requiredCrd,
-			}); err != nil {
+			if err := createCrd(context.Background(), restKubeConfig, requiredCrds); err != nil {
 				panic(err)
 			}
 

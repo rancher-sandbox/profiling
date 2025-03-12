@@ -17,7 +17,6 @@ spec:
     heap:
       seconds : 120
 ---
-
 apiVersion: resources.cattle.io/v1alpha1
 kind : PprofMonitor
 metadata:

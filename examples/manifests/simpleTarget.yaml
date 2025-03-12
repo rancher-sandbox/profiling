@@ -20,6 +20,7 @@ spec:
         ports:
         - containerPort: 6060
 ---
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -34,3 +35,22 @@ spec:
       port: 80
       targetPort: 6060
   type: ClusterIP
+
+apiVersion: resources.cattle.io/v1alpha1
+kind : PprofMonitor
+metadata:
+  name: pprofmonitor-sample
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: pprof
+  namespaceSelector:
+    any : true
+  endpoint:
+    targetPort : 80
+  config:
+    profile:
+      seconds : 120
+    heap:
+      seconds : 120

@@ -91,6 +91,7 @@ func Run(ctx context.Context, operatorOpts common.OperatorOptions, cfg *rest.Con
 		operatorOpts,
 		appCtx.Core,
 		appCtx.Apps,
+		appCtx.PprofFactory,
 		appCtx.Apply,
 	)
 

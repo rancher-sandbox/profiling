@@ -1,10 +1,89 @@
 package v1alpha1
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/alexandreLamarre/pprof-controller/pkg/config"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
+
+type GenericImage struct {
+	Registry         string                        `json:"registry,omitempty"`
+	Repo             string                        `json:"repo"`
+	Image            string                        `json:"image"`
+	Tag              string                        `json:"tag"`
+	Sha              string                        `json:"sha,omitempty"`
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	ImagePullPolicy  corev1.PullPolicy             `json:"imagePullPolicy,omitempty"`
+}
+
+// TODO : there's likely a docker/OCI library that does this in a more consistent way
+func (g *GenericImage) ImageStr() (string, error) {
+	if g.Image == "" {
+		return "", fmt.Errorf("image name is empty")
+	}
+	var parts []string
+
+	// Add registry if present
+	if g.Registry != "" {
+		parts = append(parts, g.Registry)
+	} else {
+		parts = append(parts, "docker.io")
+	}
+
+	// Add repo if present
+	if g.Repo != "" {
+		parts = append(parts, g.Repo)
+	}
+
+	// Add image
+	parts = append(parts, g.Image)
+
+	imageRef := strings.Join(parts, "/")
+
+	// Add tag if present
+	if g.Tag != "" {
+		imageRef += ":" + g.Tag
+	} else {
+		imageRef += ":latest"
+	}
+
+	if g.Sha != "" {
+		imageRef += "@" + g.Sha
+	}
+
+	return imageRef, nil
+}
+
+type GenericStorage struct {
+	// resource.MustParse("1Gi")
+	DiskSpace string `json:"diskSpace"`
+	// TODO : extend fields to handle pvcs / storage claims volumes
+}
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type PprofCollectorStack struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   CollectorSpec   `json:"spec"`
+	Status CollectorStatus `json:"status"`
+}
+
+type CollectorSpec struct {
+	CollectorImage GenericImage   `json:"collectorImage"`
+	ReloaderImage  GenericImage   `json:"reloaderImage"`
+	Storage        GenericStorage `json:"storage"`
+}
+
+type CollectorStatus struct {
+	// TODO
+}
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -54,4 +133,5 @@ type Endpoint struct {
 }
 
 type PprofStatus struct {
+	// TODO
 }

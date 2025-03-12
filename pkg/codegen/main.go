@@ -17,6 +17,7 @@ func main() {
 			"resources.cattle.io": {
 				Types: []interface{}{
 					v1alpha1.PprofMonitor{},
+					v1alpha1.PprofCollectorStack{},
 				},
 				GenerateTypes: true,
 			},

@@ -33,40 +33,6 @@ func NewWebServer(
 	}
 }
 
-// // startPProfServer start the pprof web handler without browser
-// func startPProfServer(filePath string) (mux *http.ServeMux, err error) {
-// 	mux = http.NewServeMux()
-
-// 	options := &driver.Options{
-// 		Flagset: &pprof.Flags{
-// 			Args: []string{"-http=localhost:0", "-no_browser", filePath},
-// 		},
-// 		HTTPServer: pprofHttpServer(filePath, mux),
-// 	}
-
-// 	if err = driver.PProf(options); err != nil {
-// 		return
-// 	}
-
-// 	return
-// }
-
-// // pprofHttpServer wrap http server for pprof profile manager
-// func pprofHttpServer(sourceFile string, mux *http.ServeMux) func(*driver.HTTPServerArgs) error {
-// 	return func(args *driver.HTTPServerArgs) error {
-// 		for pattern, handler := range args.Handlers {
-// 			var joinedPattern string
-// 			if pattern == "/" {
-// 				joinedPattern = profilePrefix
-// 			} else {
-// 				joinedPattern = path.Join(profilePrefix, pattern)
-// 			}
-// 			mux.Handle(joinedPattern, handler)
-// 		}
-// 		return nil
-// 	}
-// }
-
 const pprofPrefix = "/pprof/web/"
 
 func (w *WebServer) Start() error {
@@ -151,37 +117,6 @@ func (w *WebServer) Start() error {
 		</body>
 		</html>
 		`
-		// md := []hack.Metadata{}
-		// for _, key := range keys {
-		// 	md = append(md, hack.SplitPathToMd(key))
-		// }
-		// slices.SortFunc(md, func(a, b hack.Metadata) int {
-		// 	if a.Namespace < b.Namespace {
-		// 		return -1
-		// 	}
-		// 	if a.Namespace > b.Namespace {
-		// 		return 1
-		// 	}
-		// 	if a.Name < b.Name {
-		// 		return -1
-		// 	}
-		// 	if a.Name > b.Name {
-		// 		return 1
-		// 	}
-		// 	if a.Target < b.Target {
-		// 		return -1
-		// 	}
-		// 	if a.Target > b.Target {
-		// 		return 1
-		// 	}
-		// 	if a.ProfileType < b.ProfileType {
-		// 		return -1
-		// 	}
-		// 	if a.ProfileType > b.ProfileType {
-		// 		return 1
-		// 	}
-		// 	return 0
-		// })
 		toW := ""
 
 		if len(keys) == 0 || keys[0] == "" {

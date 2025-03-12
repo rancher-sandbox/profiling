@@ -24,3 +24,20 @@ func NewPprofMonitor(namespace, name string, obj PprofMonitor) *PprofMonitor {
 	obj.Namespace = namespace
 	return &obj
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// PprofCollectorStackList is a list of PprofCollectorStack resources
+type PprofCollectorStackList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+
+	Items []PprofCollectorStack `json:"items"`
+}
+
+func NewPprofCollectorStack(namespace, name string, obj PprofCollectorStack) *PprofCollectorStack {
+	obj.APIVersion, obj.Kind = SchemeGroupVersion.WithKind("PprofCollectorStack").ToAPIVersionAndKind()
+	obj.Name = name
+	obj.Namespace = namespace
+	return &obj
+}

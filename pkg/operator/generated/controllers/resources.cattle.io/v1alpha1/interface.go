@@ -15,6 +15,7 @@ func init() {
 }
 
 type Interface interface {
+	PprofCollectorStack() PprofCollectorStackController
 	PprofMonitor() PprofMonitorController
 }
 
@@ -26,6 +27,10 @@ func New(controllerFactory controller.SharedControllerFactory) Interface {
 
 type version struct {
 	controllerFactory controller.SharedControllerFactory
+}
+
+func (v *version) PprofCollectorStack() PprofCollectorStackController {
+	return generic.NewController[*v1alpha1.PprofCollectorStack, *v1alpha1.PprofCollectorStackList](schema.GroupVersionKind{Group: "resources.cattle.io", Version: "v1alpha1", Kind: "PprofCollectorStack"}, "pprofcollectorstacks", true, v.controllerFactory)
 }
 
 func (v *version) PprofMonitor() PprofMonitorController {

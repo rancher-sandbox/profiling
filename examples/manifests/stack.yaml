@@ -1,0 +1,22 @@
+apiVersion: resources.cattle.io/v1alpha1
+kind : PprofCollectorStack
+metadata:
+  name: pprofmonitor-stack
+  namespace: pprof-controller
+spec:
+  storage:
+    diskSpace : 5Gi
+  collectorImage:
+    registry: docker.io
+    repo: alex7285
+    image : pprof-collector
+    tag : dev
+    sha : "sha256:64bfd97aa9ae8eef262a50d133805341062e1d89d83e696ed81ed02c22bc6589"
+    imagePullPolicy: "Always"
+  reloaderImage:
+    registry : "ghcr.io"
+    repo: "jimmidyson"
+    image: "configmap-reload"
+    tag: "dev"
+    sha : ""
+    imagePullPolicy: "Always"

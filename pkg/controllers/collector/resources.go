@@ -1,7 +1,10 @@
 package collector
 
 import (
+	"fmt"
+
 	"github.com/alexandreLamarre/pprof-controller/pkg/controllers/common"
+	"github.com/alexandreLamarre/pprof-controller/pkg/operator/apis/v1alpha1"
 	"github.com/samber/lo"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -11,7 +14,24 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func (h *CollectorHandler) Objects() []runtime.Object {
+func (h *CollectorHandler) Objects(stack *v1alpha1.PprofCollectorStack) ([]runtime.Object, error) {
+	if stack == nil {
+		return []runtime.Object{}, nil
+	}
+
+	spaceQ, err := resource.ParseQuantity(stack.Spec.Storage.DiskSpace)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse disk space quantity: %v", err)
+	}
+	collectorImage, err := stack.Spec.CollectorImage.ImageStr()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse collector image: %v", err)
+	}
+
+	reloaderImage, err := stack.Spec.ReloaderImage.ImageStr()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse reloader image: %v", err)
+	}
 
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -44,7 +64,7 @@ func (h *CollectorHandler) Objects() []runtime.Object {
 			},
 			Resources: corev1.VolumeResourceRequirements{
 				Requests: corev1.ResourceList{
-					corev1.ResourceStorage: resource.MustParse("1Gi"),
+					corev1.ResourceStorage: spaceQ,
 				},
 			},
 			VolumeMode: &mode,
@@ -74,6 +94,7 @@ func (h *CollectorHandler) Objects() []runtime.Object {
 					},
 				},
 				Spec: corev1.PodSpec{
+					ImagePullSecrets: append(stack.Spec.CollectorImage.ImagePullSecrets, stack.Spec.ReloaderImage.ImagePullSecrets...),
 					Volumes: []corev1.Volume{
 						{
 							Name: "pprof-collector-config",
@@ -103,8 +124,8 @@ func (h *CollectorHandler) Objects() []runtime.Object {
 					Containers: []corev1.Container{
 						{
 							Name:            "pprof-collector",
-							Image:           "docker.io/alex7285/pprof-collector:dev@sha256:b8e797915654424b103f209f399148b6a4871da86a4e6341293d6194bead5d0f",
-							ImagePullPolicy: corev1.PullAlways,
+							Image:           collectorImage,
+							ImagePullPolicy: stack.Spec.CollectorImage.ImagePullPolicy,
 							Command: []string{
 								"collector",
 							},
@@ -139,8 +160,10 @@ func (h *CollectorHandler) Objects() []runtime.Object {
 							},
 						},
 						{
-							Name:  "config-reloader",
-							Image: "ghcr.io/jimmidyson/configmap-reload:dev",
+							Name: "config-reloader",
+							// Image: "ghcr.io/jimmidyson/configmap-reload:dev",
+							Image:           reloaderImage,
+							ImagePullPolicy: stack.Spec.ReloaderImage.ImagePullPolicy,
 							Args: []string{
 								"--volume-dir=/var/lib",
 								"--webhook-url=http://localhost:8989/reload",
@@ -158,5 +181,5 @@ func (h *CollectorHandler) Objects() []runtime.Object {
 			},
 		},
 	}
-	return []runtime.Object{service, pvc, ss}
+	return []runtime.Object{service, pvc, ss}, nil
 }
