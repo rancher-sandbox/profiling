@@ -39,6 +39,23 @@ builds:
         - -trimpath
       env:
         - CGO_ENABLED=0
+    - id: chaos-tool
+      main: ./internal/cmd/chaos/main.go
+      goos:
+        - linux
+      goarch:
+        - amd64
+      binary: chaos-tool
+      ldflags:
+        - -extldflags
+        - -static
+        - -s
+        - -w
+      flags:
+        - -v
+        - -trimpath
+      env:
+        - CGO_ENABLED=0
 # same archives as opentelemetry-collector releases
 archives:
     - id: pprof-collector
@@ -48,6 +65,10 @@ archives:
     - id: pprof-operator
       builds:
         - pprof-operator
+      name_template: '{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}_{{ .Mips }}{{ end }}'
+    - id: chaos-tool
+      builds:
+        - chaos-tool
       name_template: '{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}_{{ .Mips }}{{ end }}'
 checksum:
   name_template: 'checksums.txt'
