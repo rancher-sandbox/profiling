@@ -7,11 +7,11 @@ spec:
   storage:
     diskSpace : 5Gi
   collectorImage:
-    registry: docker.io
-    repo: alex7285
+    registry: ghcr.io
+    repo: alexandrelamarre
     image : pprof-collector
-    tag : dev
-    sha : "sha256:64bfd97aa9ae8eef262a50d133805341062e1d89d83e696ed81ed02c22bc6589"
+    tag : v0.1.0-pre-alpha.1
+    sha : ""
     imagePullPolicy: "Always"
   reloaderImage:
     registry : "ghcr.io"
