@@ -44,4 +44,4 @@ jobs:
           context: .
           file: ./package/chaos/Dockerfile
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/chaos-pprof-tool:${{ env.TAG_NAME }}
+          tags: ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/pprof-chaos-tool:${{ env.TAG_NAME }}
