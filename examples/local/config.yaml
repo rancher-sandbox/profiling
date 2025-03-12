@@ -3,6 +3,20 @@ self_telemetry:
   interval_seconds : 5
 # monitors:
 #   - name : test
+#     labels:
+#       __k8s_name : pprof-example-deployment
+#       __k8s_namespace : default
 #     endpoint : http://localhost:6060
-#     profile:
-#       seconds : 5
+#     sampling:
+#       profile:
+#         seconds : 5
+#       allocs:
+#         seconds : 5
+#       block:
+#         seconds : 5
+#       heap:
+#         seconds : 5
+#       goroutine:
+#         seconds : 5
+#       mutex:
+#         seconds : 5
