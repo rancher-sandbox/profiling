@@ -75,7 +75,7 @@ func (c *Collector) Start(ctx context.Context) error {
 		)
 
 		// FIXME: hack
-		maxRetries := 5
+		maxRetries := 50
 		for range maxRetries {
 			req, err := http.NewRequest("GET", fmt.Sprintf("http://%s/debug/pprof", addr), nil)
 			if err != nil {
@@ -83,8 +83,8 @@ func (c *Collector) Start(ctx context.Context) error {
 			}
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
-				c.logger.Warn("error connecting to internal pprof server, retrying...")
-				time.Sleep(5 * time.Second)
+				c.logger.Info("waiting for internal pprof endpoint to be available, retrying...")
+				time.Sleep(50 * time.Millisecond)
 				continue
 			}
 			c.logger.Info("connected to internal pprof server")

@@ -73,12 +73,7 @@ func BuildCollectorCmd() *cobra.Command {
 
 			logger.With("config", configFile).Info("starting collector")
 
-			// start collector
 			c := collector.NewCollector(context.Background(), logger, cfg, store)
-			err = c.Start(context.Background())
-			if err != nil {
-				return fmt.Errorf("failed to start collector: %w", err)
-			}
 			reloadF := func() error {
 				logger.Info("reloading collector config...")
 				data, err := os.ReadFile(configFile)
@@ -101,6 +96,12 @@ func BuildCollectorCmd() *cobra.Command {
 				}()
 				return errC
 			}()
+
+			// start collector after UI
+			err = c.Start(context.Background())
+			if err != nil {
+				return fmt.Errorf("failed to start collector: %w", err)
+			}
 			for {
 				select {
 				case <-stopper:
