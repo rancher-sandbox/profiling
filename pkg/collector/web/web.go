@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log/slog"
 	"path"
-	"slices"
 	"strings"
 
 	"github.com/alexandreLamarre/pprof-controller/pkg/collector/storage"
@@ -152,37 +151,37 @@ func (w *WebServer) Start() error {
 		</body>
 		</html>
 		`
-		md := []hack.Metadata{}
-		for _, key := range keys {
-			md = append(md, hack.SplitPathToMd(key))
-		}
-		slices.SortFunc(md, func(a, b hack.Metadata) int {
-			if a.Namespace < b.Namespace {
-				return -1
-			}
-			if a.Namespace > b.Namespace {
-				return 1
-			}
-			if a.Name < b.Name {
-				return -1
-			}
-			if a.Name > b.Name {
-				return 1
-			}
-			if a.Target < b.Target {
-				return -1
-			}
-			if a.Target > b.Target {
-				return 1
-			}
-			if a.ProfileType < b.ProfileType {
-				return -1
-			}
-			if a.ProfileType > b.ProfileType {
-				return 1
-			}
-			return 0
-		})
+		// md := []hack.Metadata{}
+		// for _, key := range keys {
+		// 	md = append(md, hack.SplitPathToMd(key))
+		// }
+		// slices.SortFunc(md, func(a, b hack.Metadata) int {
+		// 	if a.Namespace < b.Namespace {
+		// 		return -1
+		// 	}
+		// 	if a.Namespace > b.Namespace {
+		// 		return 1
+		// 	}
+		// 	if a.Name < b.Name {
+		// 		return -1
+		// 	}
+		// 	if a.Name > b.Name {
+		// 		return 1
+		// 	}
+		// 	if a.Target < b.Target {
+		// 		return -1
+		// 	}
+		// 	if a.Target > b.Target {
+		// 		return 1
+		// 	}
+		// 	if a.ProfileType < b.ProfileType {
+		// 		return -1
+		// 	}
+		// 	if a.ProfileType > b.ProfileType {
+		// 		return 1
+		// 	}
+		// 	return 0
+		// })
 		toW := ""
 
 		if len(keys) == 0 || keys[0] == "" {

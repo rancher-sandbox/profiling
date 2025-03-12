@@ -8,9 +8,14 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 )
+
+type Merger interface {
+	Merge(base []byte, incoming []byte) ([]byte, error)
+}
 
 type Store interface {
 	Put(startTime, endTime time.Time, profileType string, key string, labels map[string]string, value []byte) error
@@ -22,12 +27,14 @@ type LabelBasedFileStore struct {
 	DataDir string
 
 	IndexBy []string
+	Merger  Merger
 }
 
-func NewLabelBasedFileStore(dataDir string, indexBy []string) *LabelBasedFileStore {
+func NewLabelBasedFileStore(dataDir string, indexBy []string, merger Merger) *LabelBasedFileStore {
 	return &LabelBasedFileStore{
 		DataDir: dataDir,
 		IndexBy: indexBy,
+		Merger:  merger,
 	}
 }
 
@@ -58,14 +65,51 @@ func (s *LabelBasedFileStore) Put(startTime, endTime time.Time, profileType, key
 	startNano := startTime.UnixNano()
 	endNano := endTime.UnixNano()
 
-	filename := fmt.Sprintf("%d_%d", startNano, endNano)
-	target := path.Join(basePath, filename)
+	defaultFileName := fmt.Sprintf("%d_%d", startNano, endNano)
 
 	if err := os.MkdirAll(basePath, 0755); err != nil {
 		return err
 	}
+	files := []string{}
+	pathErr := filepath.WalkDir(basePath, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() {
+			files = append(files, path)
+		}
+		return nil
+	})
+	if pathErr != nil {
+		return pathErr
+	}
 
-	if err := os.WriteFile(target, value, 0644); err != nil {
+	slices.Sort(files)
+	var filename string
+	if len(files) > 0 {
+		lastFile := files[len(files)-1]
+		oldFileName := path.Base(lastFile)
+		strings.Split(oldFileName, "_")
+		oldStartStr := strings.Split(oldFileName, "_")[0]
+		startNano, err := strconv.ParseInt(oldStartStr, 10, 64)
+		if err != nil {
+			return err
+		}
+		filename = fmt.Sprintf("%d_%d", startNano, endNano)
+		data, err := os.ReadFile(lastFile)
+		if err != nil {
+			return err
+		}
+		merged, err := s.Merger.Merge(data, value)
+		if err != nil {
+			return err
+		}
+		value = merged
+	} else {
+		filename = defaultFileName
+	}
+	target := path.Join(basePath, filename)
+	if err := os.WriteFile(target, value, 0755); err != nil {
 		return err
 	}
 	return nil

@@ -69,7 +69,7 @@ func BuildCollectorCmd() *cobra.Command {
 				logger.With("data-dir", dataDir).Error("failed to create data dir")
 				return fmt.Errorf("failed to create data dir: %w", err)
 			}
-			store = storage.NewLabelBasedFileStore(dataDir, []string{labels.NamespaceLabel, labels.NameLabel})
+			store = storage.NewLabelBasedFileStore(dataDir, []string{labels.NamespaceLabel, labels.NameLabel}, &storage.PprofMerger{})
 
 			logger.With("config", configFile).Info("starting collector")
 
