@@ -112,3 +112,7 @@ kubectl create ns pprof-controller
 KUBECONFIG=$KUBECONFIG ./bin/operator
 kubectl apply -f ./examples/manifests/
 ```
+After a couple minutes profiles should start showing up in the UI:
+```sh
+kubectl port-forward -n pprof-controller svc/pprof-operator-collector 8989:8989
+```
