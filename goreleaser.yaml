@@ -1,0 +1,68 @@
+# This is an example .goreleaser.yml file with some sensible defaults.
+# Make sure to check the documentation at https://goreleaser.com
+version: 2
+before:
+  hooks:
+    # You may remove this if you don't use go modules.
+    - go mod tidy
+builds:
+    - id: pprof-collector
+      main: ./cmd/collector/main.go
+      goos:
+        - linux
+      goarch:
+        - amd64
+      binary: pprof-collector
+      ldflags:
+        - -extldflags
+        - -static
+        - -s
+        - -w
+      flags:
+        - -trimpath
+      env:
+        - CGO_ENABLED=0
+    - id: pprof-operator
+      main: ./cmd/operator/main.go
+      goos:
+        - linux
+      goarch:
+        - amd64
+      binary: pprof-operator
+      ldflags:
+        - -extldflags
+        - -static
+        - -s
+        - -w
+      flags:
+        - -v
+        - -trimpath
+      env:
+        - CGO_ENABLED=0
+# same archives as opentelemetry-collector releases
+archives:
+    - id: pprof-collector
+      builds:
+        - pprof-collector
+      name_template: '{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}_{{ .Mips }}{{ end }}'
+    - id: pprof-operator
+      builds:
+        - pprof-operator
+      name_template: '{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}_{{ .Mips }}{{ end }}'
+checksum:
+  name_template: 'checksums.txt'
+release:
+  prerelease : auto
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+
+# The lines beneath this are called `modelines`. See `:help modeline`
+# Feel free to remove those if you don't want/use them.
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# vim: set ts=2 sw=2 tw=0 fo=cnqoj
