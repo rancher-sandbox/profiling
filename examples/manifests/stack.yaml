@@ -10,7 +10,7 @@ spec:
     registry: ghcr.io
     repo: alexandrelamarre
     image : pprof-collector
-    tag : v0.1.0-pre-alpha.1
+    tag : v0.1.0-pre-alpha.2
     sha : ""
     imagePullPolicy: "Always"
   reloaderImage:
