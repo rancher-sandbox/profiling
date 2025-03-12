@@ -89,6 +89,7 @@ func (c *Collector) Start(ctx context.Context) error {
 			}
 			c.logger.Info("connected to internal pprof server")
 			resp.Body.Close()
+			break
 		}
 		mons = append(mons, mon)
 	}
