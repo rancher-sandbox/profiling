@@ -116,3 +116,7 @@ After a couple minutes profiles should start showing up in the UI:
 ```sh
 kubectl port-forward -n pprof-controller svc/pprof-operator-collector 8989:8989
 ```
+
+and you should get a UI like:
+
+![](./assets/pprof-dashboard.png)
