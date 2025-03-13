@@ -42,6 +42,6 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./package/chaos/Dockerfile
+          file: ./package/chaos-tool/Dockerfile
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/pprof-chaos-tool:${{ env.TAG_NAME }}
