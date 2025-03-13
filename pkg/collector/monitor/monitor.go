@@ -40,7 +40,8 @@ func NewMonitor(logger *slog.Logger, config *config.MonitorConfig, store storage
 }
 
 func (c *Monitor) newClient() *http.Client {
-	// TODO
+	// TODO : configure client
+	// TODO : reuse transport at monitor level or collector level?
 	return http.DefaultClient
 }
 
