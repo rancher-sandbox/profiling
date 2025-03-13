@@ -24,14 +24,14 @@ type MonitorConfig struct {
 }
 
 type GlobalSamplingConfig struct {
-	Allocs      *SamplerConfig `json:"allocs" yaml:"allocs"`
-	Block       *SamplerConfig `json:"block" yaml:"block"`
-	Goroutine   *SamplerConfig `json:"goroutine" yaml:"goroutine"`
-	Heap        *SamplerConfig `json:"heap" yaml:"heap"`
-	Mutex       *SamplerConfig `json:"mutex" yaml:"mutex"`
-	Profile     *SamplerConfig `json:"profile" yaml:"profile"`
-	ThreadCrate *SamplerConfig `json:"threadcreate" yaml:"threadcreate"`
-	Trace       *SamplerConfig `json:"trace" yaml:"trace"`
+	Allocs       *SamplerConfig `json:"allocs" yaml:"allocs"`
+	Block        *SamplerConfig `json:"block" yaml:"block"`
+	Goroutine    *SamplerConfig `json:"goroutine" yaml:"goroutine"`
+	Heap         *SamplerConfig `json:"heap" yaml:"heap"`
+	Mutex        *SamplerConfig `json:"mutex" yaml:"mutex"`
+	Profile      *SamplerConfig `json:"profile" yaml:"profile"`
+	ThreadCreate *SamplerConfig `json:"threadcreate" yaml:"threadcreate"`
+	Trace        *SamplerConfig `json:"trace" yaml:"trace"`
 	// TODO : unused fields
 	Compression string
 }
@@ -63,9 +63,9 @@ func (g *GlobalSamplingConfig) DeepCopyInto(out *GlobalSamplingConfig) {
 		profile := *g.Profile
 		out.Profile = &profile
 	}
-	if g.ThreadCrate != nil {
-		threadCreate := *g.ThreadCrate
-		out.ThreadCrate = &threadCreate
+	if g.ThreadCreate != nil {
+		threadCreate := *g.ThreadCreate
+		out.ThreadCreate = &threadCreate
 	}
 	if g.Trace != nil {
 		trace := *g.Trace

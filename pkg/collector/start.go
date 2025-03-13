@@ -87,9 +87,9 @@ func (c *Collector) Start(ctx context.Context) error {
 				Mutex: &config.SamplerConfig{
 					Seconds: c.Config.SelfTelemetry.IntervalSeconds,
 				},
-				// ThreadCrate: &config.SamplerConfig{
-				// 	Seconds: c.Config.SelfTelemetry.IntervalSeconds,
-				// },
+				ThreadCreate: &config.SamplerConfig{
+					Seconds: c.Config.SelfTelemetry.IntervalSeconds,
+				},
 			},
 		},
 			c.Store,

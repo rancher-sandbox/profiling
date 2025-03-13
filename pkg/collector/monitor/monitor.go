@@ -104,8 +104,8 @@ func (c *Monitor) requestsFromMonitorConfig() ([]reqWrapper, error) {
 		}
 		reqs = append(reqs, req)
 	}
-	if c.config.GlobalSampling.ThreadCrate != nil {
-		req, err := c.constructRequest("threadcrate", c.config.GlobalSampling.ThreadCrate.Seconds)
+	if c.config.GlobalSampling.ThreadCreate != nil {
+		req, err := c.constructRequest("threadcreate", c.config.GlobalSampling.ThreadCreate.Seconds)
 		if err != nil {
 			return nil, err
 		}
