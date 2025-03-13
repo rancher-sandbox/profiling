@@ -88,7 +88,7 @@ func (c *Monitor) requestsFromMonitorConfig() ([]reqWrapper, error) {
 		reqs = append(reqs, req)
 	}
 	if c.config.GlobalSampling.Mutex != nil {
-		req, err := c.constructRequest("goroutine", c.config.GlobalSampling.Goroutine.Seconds)
+		req, err := c.constructRequest("mutex", c.config.GlobalSampling.Goroutine.Seconds)
 		if err != nil {
 			return nil, err
 		}
@@ -108,13 +108,14 @@ func (c *Monitor) requestsFromMonitorConfig() ([]reqWrapper, error) {
 		}
 		reqs = append(reqs, req)
 	}
-	if c.config.GlobalSampling.Trace != nil {
-		req, err := c.constructRequest("trace", c.config.GlobalSampling.Trace.Seconds)
-		if err != nil {
-			return nil, err
-		}
-		reqs = append(reqs, req)
-	}
+	// Disbale since this conflicts with some other pprof-like functionality
+	// if c.config.GlobalSampling.Trace != nil {
+	// 	req, err := c.constructRequest("trace", c.config.GlobalSampling.Trace.Seconds)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	reqs = append(reqs, req)
+	// }
 	return reqs, nil
 }
 
