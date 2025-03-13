@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: pprof-example
-        image: ghcr.io/alexandrelamarre/pprof-chaos-tool:v0.1.0-pre-alpha.2
+        image: ghcr.io/alexandrelamarre/pprof-chaos-tool:v0.1.0-pre-alpha.3
         ports:
         - containerPort: 6060
 ---
