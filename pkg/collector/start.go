@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/alexandreLamarre/pprof-controller/pkg/collector/labels"
@@ -21,19 +22,24 @@ type Collector struct {
 	Config      *config.CollectorConfig
 	Monitors    []*monitor.Monitor
 	Store       storage.Store
+
+	lifecycleMu sync.Mutex
 }
 
 func NewCollector(ctx context.Context, logger *slog.Logger, cfg *config.CollectorConfig, store storage.Store) *Collector {
 	return &Collector{
-		ctx:      ctx,
-		logger:   logger,
-		Config:   cfg,
-		Monitors: nil,
-		Store:    store,
+		ctx:         ctx,
+		logger:      logger,
+		Config:      cfg,
+		Monitors:    nil,
+		Store:       store,
+		lifecycleMu: sync.Mutex{},
 	}
 }
 
 func (c *Collector) Start(ctx context.Context) error {
+	c.lifecycleMu.Lock()
+	defer c.lifecycleMu.Unlock()
 	mons := []*monitor.Monitor{}
 
 	if c.Config.SelfTelemetry != nil {
@@ -69,6 +75,21 @@ func (c *Collector) Start(ctx context.Context) error {
 				Heap: &config.SamplerConfig{
 					Seconds: c.Config.SelfTelemetry.IntervalSeconds,
 				},
+				Goroutine: &config.SamplerConfig{
+					Seconds: c.Config.SelfTelemetry.IntervalSeconds,
+				},
+				Allocs: &config.SamplerConfig{
+					Seconds: c.Config.SelfTelemetry.IntervalSeconds,
+				},
+				Block: &config.SamplerConfig{
+					Seconds: c.Config.SelfTelemetry.IntervalSeconds,
+				},
+				Mutex: &config.SamplerConfig{
+					Seconds: c.Config.SelfTelemetry.IntervalSeconds,
+				},
+				// ThreadCrate: &config.SamplerConfig{
+				// 	Seconds: c.Config.SelfTelemetry.IntervalSeconds,
+				// },
 			},
 		},
 			c.Store,
@@ -101,12 +122,14 @@ func (c *Collector) Start(ctx context.Context) error {
 	c.Monitors = mons
 	for _, mon := range c.Monitors {
 		mon := mon
-		go mon.Start(ctx)
+		mon.Start(ctx)
 	}
 	return nil
 }
 
 func (c *Collector) Shutdown() error {
+	c.lifecycleMu.Lock()
+	defer c.lifecycleMu.Unlock()
 	var eg errgroup.Group
 	for _, mon := range c.Monitors {
 		mon := mon
@@ -114,12 +137,15 @@ func (c *Collector) Shutdown() error {
 	}
 
 	if c.pprofServer != nil {
-		c.logger.Info("shutting down internal pprof server...")
-		if err := c.pprofServer.Shutdown(c.ctx); err != nil {
-			c.logger.With("err", err).Warn("error shutting down pprof server")
-			return err
-		}
-		c.pprofServer = nil
+		eg.Go(func() error {
+			c.logger.Info("shutting down internal pprof server...")
+			if err := c.pprofServer.Shutdown(c.ctx); err != nil {
+				c.logger.With("err", err).Warn("error shutting down pprof server")
+				return err
+			}
+			c.pprofServer = nil
+			return nil
+		})
 	}
 	if err := eg.Wait(); err != nil {
 		c.logger.With("err", err).Error("shutting down monitors")

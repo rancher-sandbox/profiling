@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/alexandreLamarre/pprof-controller/pkg/collector/storage"
@@ -21,18 +22,20 @@ type Monitor struct {
 	logger *slog.Logger
 	config *config.MonitorConfig
 
-	stopper chan struct{}
-	ca      context.CancelFunc
-	store   storage.Store
+	lifecycleMu sync.Mutex
+	stopper     chan struct{}
+	ca          context.CancelFunc
+	store       storage.Store
 }
 
 func NewMonitor(logger *slog.Logger, config *config.MonitorConfig, store storage.Store) *Monitor {
 	return &Monitor{
-		logger:  logger,
-		config:  config,
-		stopper: nil,
-		ca:      nil,
-		store:   store,
+		logger:      logger,
+		config:      config,
+		stopper:     nil,
+		ca:          nil,
+		lifecycleMu: sync.Mutex{},
+		store:       store,
 	}
 }
 
@@ -123,6 +126,8 @@ func (c *Monitor) requestsFromMonitorConfig() ([]reqWrapper, error) {
 func (c *Monitor) Start(ctx context.Context) error {
 	logger := c.logger.With("name", c.config.Name)
 	logger.Info("configuring monitor...")
+	c.lifecycleMu.Lock()
+	defer c.lifecycleMu.Unlock()
 	reqs, err := c.requestsFromMonitorConfig()
 	if err != nil {
 		return err
@@ -178,12 +183,16 @@ func (c *Monitor) start(ctx context.Context, reqs []reqWrapper) {
 }
 
 func (c *Monitor) Shutdown() error {
+	c.lifecycleMu.Lock()
+	defer c.lifecycleMu.Unlock()
 	c.logger.With("name", c.config.Name).Info("shutting down monitor...")
 	// FIXME: hack
 	if c.ca != nil {
 		c.ca()
 	}
-	close(c.stopper)
+	if c.stopper != nil {
+		close(c.stopper)
+	}
 	// select {
 	// case c.stopper <- struct{}{}:
 	// default:
