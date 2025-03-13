@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"runtime"
 	"strings"
 	"syscall"
 
@@ -29,9 +30,15 @@ func BuildCollectorCmd() *cobra.Command {
 	var logLevel string
 	var webPort int
 	var dataDir string
+	var cpuProfileRate int
+	var blockProfileRate int
+	var mutexProfileFraction int
 	cmd := &cobra.Command{
 		Use: "collector",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			runtime.SetCPUProfileRate(cpuProfileRate)
+			runtime.SetBlockProfileRate(blockProfileRate)
+			runtime.SetMutexProfileFraction(mutexProfileFraction)
 			level := slog.LevelInfo
 
 			switch strings.ToLower(logLevel) {
@@ -126,6 +133,9 @@ func BuildCollectorCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&logLevel, "log-level", "l", "info", "Log level")
 	cmd.Flags().IntVarP(&webPort, "web-port", "p", 8989, "Port for web UI")
 	cmd.Flags().StringVarP(&dataDir, "data-dir", "d", "/tmp/collector", "Directory to store and query profile data")
+	cmd.Flags().IntVarP(&cpuProfileRate, "pprof.cpu-profile-rate", "", 1, "CPU profile rate")
+	cmd.Flags().IntVarP(&blockProfileRate, "pprof.block-profile-rate", "", 1, "Block profile rate")
+	cmd.Flags().IntVarP(&mutexProfileFraction, "pprof.mutex-profile-fraction", "", 1, "Mutex profile rate")
 	return cmd
 }
 
