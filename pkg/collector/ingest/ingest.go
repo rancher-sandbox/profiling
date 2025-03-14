@@ -2,10 +2,13 @@ package ingest
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
+	"io"
 	"log/slog"
 	"math"
 	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"time"
@@ -13,14 +16,22 @@ import (
 	"github.com/alexandreLamarre/pprof-controller/pkg/collector/labels"
 	"github.com/alexandreLamarre/pprof-controller/pkg/collector/storage"
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/render"
 	"github.com/google/pprof/profile"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 
 	colprofilespb "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
 	profilespb "go.opentelemetry.io/proto/otlp/profiles/v1development"
+)
+
+const (
+	pbContentType   = "application/x-protobuf"
+	jsonContentType = "application/json"
 )
 
 type OTLPIngester struct {
@@ -37,14 +48,32 @@ func NewOTLPIngester(logger *slog.Logger, store storage.Store) *OTLPIngester {
 	}
 }
 
-func (o *OTLPIngester) Start(addr string) error {
+func (o *OTLPIngester) StartHTTP(addr string) error {
+	logger := o.logger.With("http-addr", addr)
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
+	logger.Info("Configuring otlphttp routers")
+	o.ConfigureRoutes(router)
+
+	go func() {
+		logger.Info("Starting otlphttp ingestion server...")
+		if err := router.Run(addr); err != nil {
+			logger.With("error", err).Error("failed to run router")
+			return
+		}
+	}()
+
+	return nil
+}
+
+func (o *OTLPIngester) StartGrpc(addr string) error {
 	url, err := url.Parse(addr)
 	if err != nil {
 		o.logger.With("error", err).Error("failed to parse address")
 		return err
 	}
 
-	o.logger.With("addr", addr).Info("Starting OTLP ingestion server")
+	o.logger.With("grpc-addr", addr).Info("Starting OTLP ingestion server")
 	listener, err := net.Listen(url.Scheme, url.Host)
 	if err != nil {
 		o.logger.With("error", err).Error("failed to listen")
@@ -75,18 +104,19 @@ func (o *OTLPIngester) Start(addr string) error {
 var _ colprofilespb.ProfilesServiceServer = (*OTLPIngester)(nil)
 
 func (o *OTLPIngester) ConfigureRoutes(router *gin.Engine) {
-	router.POST("/v1/development/profiles", func(c *gin.Context) {
-		// TODO :
-		// parse body
+	router.POST("/v1/development/profiles", o.handleProfilesPost)
+}
 
-		resp, err := o.Export(c, nil)
-		// better responses
-		if err != nil {
-			c.JSON(500, gin.H{"error": err.Error()})
-		} else {
-			c.JSON(200, resp)
-		}
-	})
+func (o *OTLPIngester) handleProfilesPost(c *gin.Context) {
+	switch c.ContentType() {
+	case pbContentType:
+		o.renderProto(c)
+	case jsonContentType:
+		o.renderProtoJSON(c)
+	default:
+		c.String(http.StatusUnsupportedMediaType, "unsupported media type, supported: [%s,%s]", jsonContentType, pbContentType)
+		return
+	}
 }
 
 func (o *OTLPIngester) Export(_ context.Context, req *colprofilespb.ExportProfilesServiceRequest) (*colprofilespb.ExportProfilesServiceResponse, error) {
@@ -294,4 +324,88 @@ func Convert(p *profilespb.Profile) *profile.Profile {
 		panic(err)
 	}
 	return constructed
+}
+
+func (o *OTLPIngester) renderProto(c *gin.Context) {
+	body, err := readBody(c)
+	if err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
+	req := &colprofilespb.ExportProfilesServiceRequest{}
+	err = proto.Unmarshal(body, req)
+	if err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
+	otlpResp, err := o.Export(c.Request.Context(), req)
+	if err != nil {
+		c.Status(http.StatusInternalServerError)
+		return
+	}
+	c.Render(http.StatusOK, render.ProtoBuf{
+		Data: otlpResp,
+	})
+}
+
+func (o *OTLPIngester) renderProtoJSON(c *gin.Context) {
+	body, err := readBody(c)
+	if err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
+	req := &colprofilespb.ExportProfilesServiceRequest{}
+	err = protojson.Unmarshal(body, req)
+	if err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
+	otlpResp, err := o.Export(c.Request.Context(), req)
+	if err != nil {
+		c.Status(http.StatusInternalServerError)
+		return
+	}
+	c.Render(http.StatusOK, protoJSON{
+		Data: otlpResp,
+	})
+}
+
+func readBody(c *gin.Context) ([]byte, error) {
+	bodyReader := c.Request.Body
+	if c.GetHeader("Content-Encoding") == "gzip" {
+		gr, err := gzip.NewReader(c.Request.Body)
+		if err != nil {
+			return []byte{}, err
+		}
+		defer gr.Close()
+		bodyReader = gr
+	}
+	return io.ReadAll(bodyReader)
+}
+
+type protoJSON struct {
+	Data protoreflect.ProtoMessage
+}
+
+func (p protoJSON) Render(w http.ResponseWriter) error {
+	p.WriteContentType(w)
+
+	bytes, err := protojson.Marshal(p.Data)
+	if err != nil {
+		return err
+	}
+
+	_, err = w.Write(bytes)
+	return err
+}
+
+func (p protoJSON) WriteContentType(w http.ResponseWriter) {
+	header := w.Header()
+	if val := header["Content-Type"]; len(val) == 0 {
+		header["Content-Type"] = []string{jsonContentType}
+	}
 }

@@ -105,9 +105,14 @@ func BuildCollectorCmd() *cobra.Command {
 				return errC
 			}()
 
-			// start otlp ingestion
+			// start otlp ingestion grpc
 			ingester := ingest.NewOTLPIngester(logger.With("component", "ingestion"), store)
-			if err := ingester.Start(("tcp4://127.0.0.1:4318")); err != nil {
+			if err := ingester.StartGrpc(("tcp4://127.0.0.1:4318")); err != nil {
+				return err
+			}
+
+			// start otlp ingestion http
+			if err := ingester.StartHTTP("127.0.0.1:4317"); err != nil {
 				return err
 			}
 
