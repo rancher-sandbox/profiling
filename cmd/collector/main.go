@@ -13,6 +13,7 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/alexandreLamarre/pprof-controller/pkg/collector"
+	"github.com/alexandreLamarre/pprof-controller/pkg/collector/ingest"
 	"github.com/alexandreLamarre/pprof-controller/pkg/collector/labels"
 	"github.com/alexandreLamarre/pprof-controller/pkg/collector/storage"
 	"github.com/alexandreLamarre/pprof-controller/pkg/collector/web"
@@ -68,8 +69,6 @@ func BuildCollectorCmd() *cobra.Command {
 				return fmt.Errorf("failed to unmarshal config file: %w", err)
 			}
 			logger.With("config", cfg).Info("loaded config")
-			// start web UI
-
 			logger.With("data-dir", dataDir).Info("setting up storage")
 			var store storage.Store
 			if err := os.MkdirAll(dataDir, 0755); err != nil {
@@ -95,6 +94,8 @@ func BuildCollectorCmd() *cobra.Command {
 				}
 				return nil
 			}
+
+			// start webUI
 			webServer := web.NewWebServer(logger, webPort, store, reloadF)
 			errC := func() chan error {
 				errC := make(chan error)
@@ -103,6 +104,12 @@ func BuildCollectorCmd() *cobra.Command {
 				}()
 				return errC
 			}()
+
+			// start otlp ingestion
+			ingester := ingest.NewOTLPIngester(logger.With("component", "ingestion"), store)
+			if err := ingester.Start(("tcp4://127.0.0.1:4318")); err != nil {
+				return err
+			}
 
 			// start collector after UI
 			err = c.Start(context.Background())
@@ -155,5 +162,4 @@ func main() {
 	if err := cmd.Execute(); err != nil {
 		slog.Default().With("err", err).Error("failed to run collector")
 	}
-
 }
