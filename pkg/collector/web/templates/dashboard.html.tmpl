@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profiles dashboard</title>
+    <link rel="stylesheet" type="text/css" href="/static/dashboard.css">
+    <script src="/static/dashboard.js"></script>
+</head>
+<body>
+    {{ range $namespace, $names := . }}
+    <h1> Namespace : {{ $namespace }}</h1>
+        {{ range $name, $resources := $names }}
+        <h1> Service : {{$name}} </h1>
+            {{ range $resource, $profiles := $resources }}
+                <h1> Resource : {{$resource}} </h1>
+                {{ range $profile := $profiles }}
+                <br/>
+                <h2> Profile Type : {{- $parts := splitString $profile "/"}}{{index $parts 0}} </h2>
+                 <div class="iframe-container" id="iframe-container-{{$profile}}"> 
+                    <iframe class="iframe" id="iframe-{{$profile}}" src="/pprof/web/{{$profile}}/"> </iframe>
+                    <div class="resizer" id="resizer-{{$profile}}"> </div>
+                 </div>
+                {{ end }}
+                <br/>
+            {{end}}
+        <br/>
+        {{end}}
+    <br/>
+    {{ end }}
+</body>
+</html>

@@ -96,7 +96,7 @@ func BuildCollectorCmd() *cobra.Command {
 			}
 
 			// start webUI
-			webServer := web.NewWebServer(logger, webPort, store, reloadF)
+			webServer := web.NewWebServer(logger, webPort, store, reloadF, dataDir)
 			errC := func() chan error {
 				errC := make(chan error)
 				go func() {

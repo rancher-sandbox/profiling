@@ -1,0 +1,32 @@
+body {
+    overflow: auto;
+}
+.iframe-container {
+    position: relative;
+    display: inline-block;
+    border: 1px solid #ccc;
+    resize: both;
+    overflow: hidden;
+    min-width: 600px;
+    min-height: 600px;
+    overflow: hidden;
+}
+
+iframe {
+    min-width: 600px;
+    min-height: 600px;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.resizer {
+    position: absolute;
+    width: 15px;
+    height: 15px;
+    background: gray;
+    bottom: 0;
+    right: 0;
+    cursor: nwse-resize;
+    overflow: hidden;
+}
