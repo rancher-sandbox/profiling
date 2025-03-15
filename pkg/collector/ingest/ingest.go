@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"math"
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"time"
 
 	"github.com/alexandreLamarre/pprof-controller/pkg/collector/labels"
@@ -18,7 +19,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/render"
 	"github.com/google/pprof/profile"
-	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -120,41 +120,57 @@ func (o *OTLPIngester) handleProfilesPost(c *gin.Context) {
 }
 
 func (o *OTLPIngester) Export(_ context.Context, req *colprofilespb.ExportProfilesServiceRequest) (*colprofilespb.ExportProfilesServiceResponse, error) {
+	// TODO : eventually identify different sources, now we assume these are coming from eBPF collector
+	partialResp := o.handleEbpfCollectorProfile(req.GetResourceProfiles())
+	return &colprofilespb.ExportProfilesServiceResponse{
+		PartialSuccess: partialResp,
+	}, nil
+}
 
-	for _, rsc := range req.GetResourceProfiles() {
-		// logrus.Infof("resource attributes %v", rsc.Resource.GetAttributes())
+func (o *OTLPIngester) handleEbpfCollectorProfile(rscs []*profilespb.ResourceProfiles) *colprofilespb.ExportProfilesPartialSuccess {
+	failedCount := int64(0)
+	errs := []error{}
+	for _, rsc := range rscs {
+		// resource from opentelemetry-eBPF-profiler has attributes
+		// 	- host.id
+		//  - host.ip
+		// 	- host.name
+		//  - service.version
+		//  - os.kernel
+
 		for _, scope := range rsc.GetScopeProfiles() {
-			// logrus.Infof("scope attributes %v", scope.Scope.GetAttributes())
 			for _, prof := range scope.GetProfiles() {
-				// logrus.Infof("profile attributes %v", prof.GetAttributeTable())
-				// FIXME:
-				// Surfacing errors here should not return to the grpc client, we should export PartialSuccess response instead,
-				// unless we really encounter a format error from the input request or an unrecoverable internal server error
-				data, err := protojson.Marshal(prof)
-				if err != nil {
-					return nil, err
-				}
 				p := Convert(prof)
 				if err := p.CheckValid(); err != nil {
-					badId := uuid.New().String()
-					os.WriteFile("bad_profile_"+badId+".json", data, 0644)
-					return nil, err
+					failedCount += 1
+					o.logger.With("error", err).Error("cannot convert to pprof profile")
+					errs = append(errs, fmt.Errorf("failed to convert to pprof profile : %w", err))
+					continue
 				}
 				b := bytes.NewBuffer([]byte{})
 				if err := p.Write(b); err != nil {
-					return nil, err
+					failedCount += 1
+					o.logger.With("error", err).Error("failed to write profile to buffer")
+					errs = append(errs, fmt.Errorf("failed to write profile to buffer: %w", err))
+					continue
 				}
 				const allKey = "all"
 				if err := o.store.Put(time.Now(), time.Now(), "profile", allKey, map[string]string{
 					labels.NamespaceLabel: "ebpf-local",
 					labels.NameLabel:      "host",
 				}, b.Bytes()); err != nil {
-					return nil, err
+					failedCount += 1
+					o.logger.With("error", err).Error("failed to store profile")
+					errs = append(errs, fmt.Errorf("failed to store profile: %w", err))
+					continue
 				}
 			}
 		}
 	}
-	return nil, nil
+	return &colprofilespb.ExportProfilesPartialSuccess{
+		RejectedProfiles: failedCount,
+		ErrorMessage:     errors.Join(errs...).Error(),
+	}
 }
 
 func uniqueFunctionIDx(strTableLen int, fnIdx, systemIdx int32) uint64 {
