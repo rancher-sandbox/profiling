@@ -228,6 +228,8 @@ func endpSubsetToAddresses(endpAndSvc serviceAndEndpoint, target v1alpha1.Endpoi
 
 		for _, ip := range subset.Addresses {
 			for _, port := range actualPorts {
+				// TODO : this doesn't really differentiate different containers within pods
+
 				addrWithoutSchemePath = append(addrWithoutSchemePath, directAddrAndFriendlyName{
 					addr: fmt.Sprintf("%s:%d", ip.IP, port),
 					// Note : do not include any '/' in the friendly name it will confuse the hacky storage implementation
@@ -298,16 +300,22 @@ func (h *PprofHandler) OnPprofMonitorChange(_ string, monitor *v1alpha1.PprofMon
 
 		for _, endp := range endpAndServiceList {
 			addresses := endpSubsetToAddresses(endp, mon.Spec.Endpoint)
-			slices.SortFunc(addresses, func(a, b directAddrAndFriendlyName) int {
+			slices.SortStableFunc(addresses, func(a, b directAddrAndFriendlyName) int {
 				if a.friendlyName < b.friendlyName {
 					return -1
 				}
 				if a.friendlyName > b.friendlyName {
 					return 1
 				}
+				if a.addr < b.addr {
+					return -1
+				}
+				if a.addr > b.addr {
+					return 1
+				}
 				return 0
 			})
-			// TODO : at some point in this pipeline we need to de-duplicate addresses : Monitors can point to the same address, pprof typically precious multiple concurrent
+			// TODO : at some point in this pipeline we need to de-duplicate addresses : Monitors can point to the same address, pprof typically prevents multiple concurrent
 			// open requests.
 			constructed = append(constructed, MonitorAndAddresses{
 				monitor:      mon,
@@ -319,7 +327,7 @@ func (h *PprofHandler) OnPprofMonitorChange(_ string, monitor *v1alpha1.PprofMon
 	}
 
 	// TODO : verify this always results in a deterministic order
-	slices.SortFunc(constructed, func(a, b MonitorAndAddresses) int {
+	slices.SortStableFunc(constructed, func(a, b MonitorAndAddresses) int {
 		if a.monitor.Namespace > b.monitor.Namespace {
 			return 1
 		}
