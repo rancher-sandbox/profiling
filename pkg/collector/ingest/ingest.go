@@ -167,9 +167,14 @@ func (o *OTLPIngester) handleEbpfCollectorProfile(rscs []*profilespb.ResourcePro
 			}
 		}
 	}
+	err := errors.Join(errs...)
+	var msg string
+	if err != nil {
+		msg = err.Error()
+	}
 	return &colprofilespb.ExportProfilesPartialSuccess{
 		RejectedProfiles: failedCount,
-		ErrorMessage:     errors.Join(errs...).Error(),
+		ErrorMessage:     msg,
 	}
 }
 
