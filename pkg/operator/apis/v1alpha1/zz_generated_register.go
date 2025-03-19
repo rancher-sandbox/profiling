@@ -5,7 +5,7 @@
 package v1alpha1
 
 import (
-	resources "github.com/alexandreLamarre/pprof-controller/pkg/operator/apis"
+	resources "github.com/rancher-sandbox/profiling/pkg/operator/apis"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"

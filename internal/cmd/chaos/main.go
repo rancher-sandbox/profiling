@@ -11,8 +11,8 @@ import (
 	"runtime"
 	"syscall"
 
-	"github.com/alexandreLamarre/pprof-controller/internal/chaos/lock"
-	"github.com/alexandreLamarre/pprof-controller/internal/chaos/mem"
+	"github.com/rancher-sandbox/profiling/internal/chaos/lock"
+	"github.com/rancher-sandbox/profiling/internal/chaos/mem"
 )
 
 func main() {

@@ -1,4 +1,4 @@
-# pprof-controller
+# rancher-profiling
 
 Continuous profiling for Golang services using a k8s imperative API
 

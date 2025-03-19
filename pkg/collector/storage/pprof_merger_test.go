@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/alexandreLamarre/pprof-controller/pkg/collector/storage"
-	"github.com/alexandreLamarre/pprof-controller/pkg/test/testdata"
 	"github.com/google/pprof/profile"
+	"github.com/rancher-sandbox/profiling/pkg/collector/storage"
+	"github.com/rancher-sandbox/profiling/pkg/test/testdata"
 	"github.com/stretchr/testify/assert"
 )
 

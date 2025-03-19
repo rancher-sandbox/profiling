@@ -15,11 +15,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alexandreLamarre/pprof-controller/pkg/collector/labels"
-	"github.com/alexandreLamarre/pprof-controller/pkg/collector/storage"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/render"
 	"github.com/google/pprof/profile"
+	"github.com/rancher-sandbox/profiling/pkg/collector/labels"
+	"github.com/rancher-sandbox/profiling/pkg/collector/storage"
 	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"

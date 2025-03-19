@@ -4,9 +4,9 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/alexandreLamarre/pprof-controller/pkg/controllers/common"
-	"github.com/alexandreLamarre/pprof-controller/pkg/operator"
-	"github.com/alexandreLamarre/pprof-controller/pkg/operator/apis/v1alpha1"
+	"github.com/rancher-sandbox/profiling/pkg/controllers/common"
+	"github.com/rancher-sandbox/profiling/pkg/operator"
+	"github.com/rancher-sandbox/profiling/pkg/operator/apis/v1alpha1"
 	"github.com/rancher/wrangler/v3/pkg/crd"
 	"github.com/rancher/wrangler/v3/pkg/kubeconfig"
 	"github.com/rancher/wrangler/v3/pkg/signals"

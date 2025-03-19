@@ -3,8 +3,8 @@ package ingest_test
 import (
 	"testing"
 
-	"github.com/alexandreLamarre/pprof-controller/pkg/collector/ingest"
-	"github.com/alexandreLamarre/pprof-controller/pkg/test/testdata"
+	"github.com/rancher-sandbox/profiling/pkg/collector/ingest"
+	"github.com/rancher-sandbox/profiling/pkg/test/testdata"
 	"github.com/stretchr/testify/assert"
 	profilespb "go.opentelemetry.io/proto/otlp/profiles/v1development"
 	"google.golang.org/protobuf/encoding/protojson"

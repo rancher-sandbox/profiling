@@ -1,8 +1,8 @@
 package monitor
 
 import (
-	"github.com/alexandreLamarre/pprof-controller/pkg/config"
-	"github.com/alexandreLamarre/pprof-controller/pkg/controllers/common"
+	"github.com/rancher-sandbox/profiling/pkg/config"
+	"github.com/rancher-sandbox/profiling/pkg/controllers/common"
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

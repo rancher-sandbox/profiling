@@ -8,9 +8,9 @@ import (
 
 	_ "net/http/pprof"
 
-	"github.com/alexandreLamarre/pprof-controller/pkg/collector/monitor"
-	"github.com/alexandreLamarre/pprof-controller/pkg/collector/storage"
-	"github.com/alexandreLamarre/pprof-controller/pkg/config"
+	"github.com/rancher-sandbox/profiling/pkg/collector/monitor"
+	"github.com/rancher-sandbox/profiling/pkg/collector/storage"
+	"github.com/rancher-sandbox/profiling/pkg/config"
 	"github.com/stretchr/testify/assert"
 )
 

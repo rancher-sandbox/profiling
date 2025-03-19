@@ -1,4 +1,4 @@
-module github.com/alexandreLamarre/pprof-controller
+module github.com/rancher-sandbox/profiling
 
 go 1.23.4
 

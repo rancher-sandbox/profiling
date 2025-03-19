@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alexandreLamarre/pprof-controller/pkg/collector/labels"
-	"github.com/alexandreLamarre/pprof-controller/pkg/collector/storage"
+	"github.com/rancher-sandbox/profiling/pkg/collector/labels"
+	"github.com/rancher-sandbox/profiling/pkg/collector/storage"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alexandreLamarre/pprof-controller/pkg/collector/storage"
-	"github.com/alexandreLamarre/pprof-controller/pkg/config"
+	"github.com/rancher-sandbox/profiling/pkg/collector/storage"
+	"github.com/rancher-sandbox/profiling/pkg/config"
 )
 
 type reqWrapper struct {

@@ -12,12 +12,12 @@ import (
 
 	_ "net/http/pprof"
 
-	"github.com/alexandreLamarre/pprof-controller/pkg/collector"
-	"github.com/alexandreLamarre/pprof-controller/pkg/collector/ingest"
-	"github.com/alexandreLamarre/pprof-controller/pkg/collector/labels"
-	"github.com/alexandreLamarre/pprof-controller/pkg/collector/storage"
-	"github.com/alexandreLamarre/pprof-controller/pkg/collector/web"
-	"github.com/alexandreLamarre/pprof-controller/pkg/config"
+	"github.com/rancher-sandbox/profiling/pkg/collector"
+	"github.com/rancher-sandbox/profiling/pkg/collector/ingest"
+	"github.com/rancher-sandbox/profiling/pkg/collector/labels"
+	"github.com/rancher-sandbox/profiling/pkg/collector/storage"
+	"github.com/rancher-sandbox/profiling/pkg/collector/web"
+	"github.com/rancher-sandbox/profiling/pkg/config"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )

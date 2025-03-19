@@ -3,7 +3,7 @@
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/alexandreLamarre/pprof-controller/pkg/operator/apis/v1alpha1"
+	v1alpha1 "github.com/rancher-sandbox/profiling/pkg/operator/apis/v1alpha1"
 	"github.com/rancher/lasso/pkg/controller"
 	"github.com/rancher/wrangler/v3/pkg/generic"
 	"github.com/rancher/wrangler/v3/pkg/schemes"

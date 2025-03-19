@@ -3,8 +3,8 @@ package collector
 import (
 	"fmt"
 
-	"github.com/alexandreLamarre/pprof-controller/pkg/controllers/common"
-	"github.com/alexandreLamarre/pprof-controller/pkg/operator/apis/v1alpha1"
+	"github.com/rancher-sandbox/profiling/pkg/controllers/common"
+	"github.com/rancher-sandbox/profiling/pkg/operator/apis/v1alpha1"
 	"github.com/samber/lo"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"

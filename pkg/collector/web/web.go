@@ -8,8 +8,8 @@ import (
 	"path"
 	"strings"
 
-	"github.com/alexandreLamarre/pprof-controller/pkg/collector/storage"
 	"github.com/gin-gonic/gin"
+	"github.com/rancher-sandbox/profiling/pkg/collector/storage"
 )
 
 type WebServer struct {

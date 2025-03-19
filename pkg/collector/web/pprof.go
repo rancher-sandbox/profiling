@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"path"
 
-	"github.com/alexandreLamarre/pprof-controller/pkg/collector/web/internal/pprof"
 	"github.com/google/pprof/driver"
+	"github.com/rancher-sandbox/profiling/pkg/collector/web/internal/pprof"
 )
 
 type PprofWebWrapper struct {

@@ -6,13 +6,13 @@ before:
     # You may remove this if you don't use go modules.
     - go mod tidy
 builds:
-    - id: pprof-collector
+    - id: profiling-collector
       main: ./cmd/collector/main.go
       goos:
         - linux
       goarch:
         - amd64
-      binary: pprof-collector
+      binary: profiling-collector
       ldflags:
         - -extldflags
         - -static
@@ -22,13 +22,13 @@ builds:
         - -trimpath
       env:
         - CGO_ENABLED=0
-    - id: pprof-operator
+    - id: profiling-operator
       main: ./cmd/operator/main.go
       goos:
         - linux
       goarch:
         - amd64
-      binary: pprof-operator
+      binary: profiling-operator
       ldflags:
         - -extldflags
         - -static
@@ -58,13 +58,13 @@ builds:
         - CGO_ENABLED=0
 # same archives as opentelemetry-collector releases
 archives:
-    - id: pprof-collector
+    - id: profiling-collector
       builds:
-        - pprof-collector
+        - profiling-collector
       name_template: '{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}_{{ .Mips }}{{ end }}'
-    - id: pprof-operator
+    - id: profiling-operator
       builds:
-        - pprof-operator
+        - profiling-operator
       name_template: '{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}_{{ .Mips }}{{ end }}'
     - id: chaos-tool
       builds:

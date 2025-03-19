@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	v1alpha1 "github.com/alexandreLamarre/pprof-controller/pkg/operator/apis/v1alpha1"
+	v1alpha1 "github.com/rancher-sandbox/profiling/pkg/operator/apis/v1alpha1"
 	"github.com/rancher/wrangler/v3/pkg/apply"
 	"github.com/rancher/wrangler/v3/pkg/condition"
 	"github.com/rancher/wrangler/v3/pkg/generic"

@@ -6,9 +6,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/alexandreLamarre/pprof-controller/pkg/controllers/common"
-	"github.com/alexandreLamarre/pprof-controller/pkg/operator/apis/v1alpha1"
-	"github.com/alexandreLamarre/pprof-controller/pkg/operator/generated/controllers/resources.cattle.io"
+	"github.com/rancher-sandbox/profiling/pkg/controllers/common"
+	"github.com/rancher-sandbox/profiling/pkg/operator/apis/v1alpha1"
+	"github.com/rancher-sandbox/profiling/pkg/operator/generated/controllers/resources.cattle.io"
 	"github.com/rancher/wrangler/v3/pkg/apply"
 	"github.com/rancher/wrangler/v3/pkg/generated/controllers/apps"
 	"github.com/rancher/wrangler/v3/pkg/generated/controllers/core"

@@ -3,7 +3,7 @@
 package resources
 
 import (
-	v1alpha1 "github.com/alexandreLamarre/pprof-controller/pkg/operator/generated/controllers/resources.cattle.io/v1alpha1"
+	v1alpha1 "github.com/rancher-sandbox/profiling/pkg/operator/generated/controllers/resources.cattle.io/v1alpha1"
 	"github.com/rancher/lasso/pkg/controller"
 )
 
