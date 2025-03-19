@@ -35,3 +35,5 @@ spec:
       seconds : 120
     heap:
       seconds : 120
+    allocs:
+      seconds : 120

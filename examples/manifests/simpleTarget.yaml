@@ -19,6 +19,11 @@ spec:
         image: ghcr.io/alexandrelamarre/pprof-chaos-tool:v0.1.0-pre-alpha.3
         ports:
         - containerPort: 6060
+        resources:
+          limits: 
+            memory: "512Mi"
+          requests:
+            memory: "256Mi"
 ---
 
 apiVersion: v1
@@ -53,4 +58,10 @@ spec:
     profile:
       seconds : 120
     heap:
+      seconds : 120
+    mutex:
+      seconds : 120
+    goroutine:
+      seconds : 120
+    allocs:
       seconds : 120
