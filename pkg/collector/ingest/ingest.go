@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/alexandreLamarre/pprof-controller/pkg/collector/labels"
@@ -19,6 +20,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/render"
 	"github.com/google/pprof/profile"
+	"github.com/samber/lo"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -127,6 +130,41 @@ func (o *OTLPIngester) Export(_ context.Context, req *colprofilespb.ExportProfil
 	}, nil
 }
 
+func splitByPid(profile *profilespb.Profile) map[int64][]*profilespb.Profile {
+	ret := map[int64][]*profilespb.Profile{}
+	for idx, s := range profile.GetSample() {
+		var pid *int64
+		for _, attrIdx := range s.GetAttributeIndices() {
+			attr := profile.GetAttributeTable()[attrIdx]
+			if attr.GetKey() == "process.pid" {
+				pid = lo.ToPtr(attr.GetValue().GetIntValue())
+			}
+		}
+		if pid == nil {
+			logrus.Warnf("dropping sample for sample at index : %d", idx)
+			continue
+		}
+		// hack: copy the profile
+		data, err := proto.Marshal(profile)
+		if err != nil {
+			panic(err)
+		}
+		var base profilespb.Profile
+		if err := proto.Unmarshal(data, &base); err != nil {
+			panic(err)
+		}
+
+		base.Sample = []*profilespb.Sample{s}
+		if _, ok := ret[*pid]; !ok {
+			ret[*pid] = []*profilespb.Profile{&base}
+		} else {
+			ret[*pid] = append(ret[*pid], &base)
+		}
+	}
+	return ret
+
+}
+
 func (o *OTLPIngester) handleEbpfCollectorProfile(rscs []*profilespb.ResourceProfiles) *colprofilespb.ExportProfilesPartialSuccess {
 	failedCount := int64(0)
 	errs := []error{}
@@ -140,6 +178,58 @@ func (o *OTLPIngester) handleEbpfCollectorProfile(rscs []*profilespb.ResourcePro
 
 		for _, scope := range rsc.GetScopeProfiles() {
 			for _, prof := range scope.GetProfiles() {
+				// split by PID
+				profileMap := splitByPid(prof)
+				for pid, profiles := range profileMap {
+					threadNames := []string{}
+					// logrus.Infof("split result (pid=%d) : num profiles : %d", pid, len(profiles))
+					var baseProfile *profile.Profile
+					for _, prof := range profiles {
+						for _, s := range prof.GetSample() {
+							for _, attrIdx := range s.GetAttributeIndices() {
+								attr := prof.GetAttributeTable()[attrIdx]
+								if attr.GetKey() == "thread.name" {
+									name := attr.GetValue().GetStringValue()
+									name = strings.ReplaceAll(name, "/", "-")
+									threadNames = append(threadNames, name)
+									if name == "collector" {
+										logrus.Debug("collector thread")
+									}
+								}
+							}
+						}
+
+						p := Convert(prof)
+						if p == nil {
+							panic("failed to convert to pprof profile")
+						}
+						if err := p.CheckValid(); err != nil {
+							panic(err)
+						}
+						if baseProfile == nil {
+							baseProfile = p
+						} else {
+							pf, err := profile.Merge([]*profile.Profile{baseProfile, p})
+							if err != nil {
+								panic(err)
+							}
+							baseProfile = pf
+						}
+					}
+
+					b := bytes.NewBuffer([]byte{})
+					if err := baseProfile.Write(b); err != nil {
+						panic(err)
+					}
+					threadSuffix := strings.Join(lo.Uniq(threadNames), "-")
+					if err := o.store.Put(time.Now(), time.Now(), "profile", fmt.Sprintf("pid-%d-%s", pid, threadSuffix), map[string]string{
+						labels.NamespaceLabel: "ebpf-local",
+						labels.NameLabel:      "host",
+					}, b.Bytes()); err != nil {
+						panic(err)
+					}
+				}
+
 				p := Convert(prof)
 				if err := p.CheckValid(); err != nil {
 					failedCount += 1
@@ -189,10 +279,16 @@ func uniqueFunctionIDx(strTableLen int, fnIdx, systemIdx int32) uint64 {
 }
 
 func isEmptyFunction(f *profilespb.Function) bool {
-	return f.NameStrindex == 0 && f.FilenameStrindex == 0 && f.SystemNameStrindex == 0
+	maybeEmpty := f.NameStrindex == 0 && f.FilenameStrindex == 0 && f.SystemNameStrindex == 0
+	if maybeEmpty {
+		logrus.Debug("maybe empty function")
+	}
+	return maybeEmpty
 }
 
 func Convert(p *profilespb.Profile) *profile.Profile {
+
+	// end debug
 	out := &profile.Profile{
 		SampleType: []*profile.ValueType{},
 		Sample:     []*profile.Sample{},
@@ -214,13 +310,26 @@ func Convert(p *profilespb.Profile) *profile.Profile {
 			continue
 		}
 
-		out.Function = append(out.Function, &profile.Function{
+		appF := &profile.Function{
 			ID:         uniqueFunctionIDx(len(p.GetStringTable()), f.GetNameStrindex(), f.GetSystemNameStrindex()),
 			Name:       p.GetStringTable()[f.GetNameStrindex()],
 			Filename:   p.GetStringTable()[f.GetFilenameStrindex()],
 			SystemName: p.GetStringTable()[f.GetSystemNameStrindex()],
 			StartLine:  f.GetStartLine(),
-		})
+		}
+		if appF.SystemName != "" {
+			logrus.Info(appF.SystemName)
+		}
+		if appF.Filename != "" {
+			logrus.Warn(appF.Filename, "|", appF.Name, "|", appF.SystemName)
+		}
+
+		if appF.Name == "" && appF.SystemName == "" && appF.Filename != "" {
+			logrus.Warnf("must symbolize function with : %s", appF.Filename)
+		}
+
+		out.Function = append(out.Function, appF)
+
 	}
 
 	for _, f := range out.Function {
@@ -281,7 +390,23 @@ func Convert(p *profilespb.Profile) *profile.Profile {
 		out.Location = append(out.Location, nl)
 	}
 
-	for _, s := range p.GetSample() {
+	for idx, s := range p.GetSample() {
+		var threadName string
+		var pid int64
+		for _, attrIdx := range s.GetAttributeIndices() {
+			attr := p.GetAttributeTable()[attrIdx]
+			logrus.Debug(attr.GetKey())
+			if attr.GetKey() == "thread.name" {
+				threadName = attr.Value.GetStringValue()
+			}
+			if attr.GetKey() == "process.pid" {
+				pid = attr.Value.GetIntValue()
+			}
+		}
+		logrus.Debugf("[%d] pid: %d, thread.name: %s", idx, pid, threadName)
+
+		// here we want to group by (pid thread.name) maybe?
+
 		ps := &profile.Sample{
 			Value:    s.GetValue(),
 			Location: []*profile.Location{},
@@ -289,6 +414,22 @@ func Convert(p *profilespb.Profile) *profile.Profile {
 			NumLabel: map[string][]int64{},
 			NumUnit:  map[string][]string{},
 		}
+
+		// first location to group by process/thread, purely "cosmetic"
+
+		// ps.Location = append(ps.Location, &profile.Location{
+		// 	ID: 7777 + uint64(idx),
+		// 	Line: []profile.Line{
+		// 		{
+		// 			Function: &profile.Function{
+		// 				ID:   7777 + uint64(idx),
+		// 				Name: threadName,
+		// 			},
+		// 		},
+		// 	},
+		// 	Mapping:  &profile.Mapping{},
+		// 	IsFolded: false,
+		// })
 
 		lStart := s.GetLocationsStartIndex()
 		lEnd := s.GetLocationsLength()
